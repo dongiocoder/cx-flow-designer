@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 
 interface NewFlowDialogProps {
-  onCreateFlow: (flowData: { name: string; description: string; status: 'Active' | 'Draft' }) => void;
+  onCreateFlow: (flowData: { name: string; description: string; status: 'Active' | 'Draft'; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => void;
 }
 
 export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
@@ -17,14 +17,15 @@ export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    status: 'Draft' as 'Active' | 'Draft'
+    status: 'Draft' as 'Active' | 'Draft',
+    tier: 'Tier 1' as 'Tier 1' | 'Tier 2' | 'Tier 3'
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name.trim()) {
       onCreateFlow(formData);
-      setFormData({ name: '', description: '', status: 'Draft' });
+      setFormData({ name: '', description: '', status: 'Draft', tier: 'Tier 1' });
       setOpen(false);
     }
   };
@@ -78,6 +79,20 @@ export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
               >
                 <option value="Draft">Draft</option>
                 <option value="Active">Active</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tier">Tier</Label>
+              <select
+                id="tier"
+                value={formData.tier}
+                onChange={(e) => setFormData(prev => ({ ...prev, tier: e.target.value as 'Tier 1' | 'Tier 2' | 'Tier 3' }))}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="Tier 1">Tier 1</option>
+                <option value="Tier 2">Tier 2</option>
+                <option value="Tier 3">Tier 3</option>
               </select>
             </div>
             

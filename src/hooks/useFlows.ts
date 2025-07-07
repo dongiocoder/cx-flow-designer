@@ -6,6 +6,7 @@ export interface Flow {
   description: string;
   lastModified: string;
   status: 'Active' | 'Draft';
+  tier: 'Tier 1' | 'Tier 2' | 'Tier 3';
   createdAt: string;
 }
 
@@ -19,6 +20,7 @@ const initialFlows: Flow[] = [
     description: "Main customer support contact driver mapping",
     lastModified: new Date().toISOString().split('T')[0],
     status: "Active",
+    tier: "Tier 1",
     createdAt: new Date().toISOString()
   },
   {
@@ -27,6 +29,7 @@ const initialFlows: Flow[] = [
     description: "Lead generation and sales intent mapping",
     lastModified: new Date().toISOString().split('T')[0],
     status: "Draft",
+    tier: "Tier 2",
     createdAt: new Date().toISOString()
   },
   {
@@ -35,6 +38,7 @@ const initialFlows: Flow[] = [
     description: "Return process and refund request mapping",
     lastModified: new Date().toISOString().split('T')[0],
     status: "Active",
+    tier: "Tier 3",
     createdAt: new Date().toISOString()
   }
 ];

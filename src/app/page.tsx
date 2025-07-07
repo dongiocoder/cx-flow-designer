@@ -22,7 +22,7 @@ export default function Home() {
     isPartiallySelected
   } = useFlows();
 
-  const handleCreateFlow = (flowData: { name: string; description: string; status: 'Active' | 'Draft' }) => {
+  const handleCreateFlow = (flowData: { name: string; description: string; status: 'Active' | 'Draft'; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => {
     addFlow(flowData);
   };
 
@@ -130,10 +130,11 @@ export default function Home() {
                       onChange={handleMasterCheckboxChange}
                     />
                   </div>
-                  <div className="col-span-4">Name</div>
+                  <div className="col-span-3">Name</div>
                   <div className="col-span-3">Description</div>
                   <div className="col-span-2">Last Modified</div>
                   <div className="col-span-1">Status</div>
+                  <div className="col-span-1">Tier</div>
                   <div className="col-span-1">Actions</div>
                 </div>
 
@@ -153,7 +154,7 @@ export default function Home() {
                           onChange={() => toggleFlowSelection(flow.id)}
                         />
                       </div>
-                      <div className="col-span-4">
+                      <div className="col-span-3">
                         <div className="font-medium">{flow.name}</div>
                       </div>
                       <div className="col-span-3">
@@ -169,6 +170,17 @@ export default function Home() {
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
                           {flow.status}
+                        </span>
+                      </div>
+                      <div className="col-span-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          flow.tier === 'Tier 1' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : flow.tier === 'Tier 2'
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {flow.tier}
                         </span>
                       </div>
                       <div className="col-span-1">
