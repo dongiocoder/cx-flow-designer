@@ -1,12 +1,44 @@
 import { useState, useEffect } from 'react';
+import type { Node, Edge } from '@xyflow/react';
+
+export interface FlowData {
+  nodes: Node[];
+  edges: Edge[];
+}
+
+interface LegacyFlow {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  lastModified: string;
+  createdAt: string;
+  version?: string;
+  data?: FlowData;
+}
+
+interface LegacyDriver {
+  id: string;
+  name: string;
+  description: string;
+  lastModified: string;
+  tier: 'Tier 1' | 'Tier 2' | 'Tier 3';
+  volumePerMonth?: number;
+  avgHandleTime?: number;
+  csat?: number;
+  flows?: LegacyFlow[];
+  createdAt: string;
+}
 
 export interface Flow {
   id: string;
   name: string;
   description: string;
-  type: 'current' | 'future';
+  type: 'current' | 'draft';
   lastModified: string;
   createdAt: string;
+  version?: string;
+  data?: FlowData;
 }
 
 export interface ContactDriver {
@@ -15,6 +47,9 @@ export interface ContactDriver {
   description: string;
   lastModified: string;
   tier: 'Tier 1' | 'Tier 2' | 'Tier 3';
+  volumePerMonth: number;
+  avgHandleTime: number; // in minutes
+  csat: number; // percentage
   flows: Flow[];
   createdAt: string;
 }
@@ -29,20 +64,32 @@ const initialContactDrivers: ContactDriver[] = [
     description: "Customer cannot access their account due to login problems",
     lastModified: new Date().toISOString().split('T')[0],
     tier: "Tier 1",
+    volumePerMonth: 1250,
+    avgHandleTime: 8.5,
+    csat: 92,
     flows: [
       {
         id: '1-1',
-        name: "Current Login Process",
-        description: "Existing password reset flow",
+        name: "Password Reset Flow",
+        description: "Current password reset process",
         type: 'current',
+        version: "v 3.2",
         lastModified: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       },
       {
         id: '1-2',
-        name: "Enhanced Login Process",
+        name: "Enhanced MFA Flow",
         description: "Improved multi-factor authentication flow",
-        type: 'future',
+        type: 'draft',
+        lastModified: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '1-3',
+        name: "Biometric Login",
+        description: "Future biometric authentication option",
+        type: 'draft',
         lastModified: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       }
@@ -55,12 +102,16 @@ const initialContactDrivers: ContactDriver[] = [
     description: "Customer wants information about products before purchasing",
     lastModified: new Date().toISOString().split('T')[0],
     tier: "Tier 2",
+    volumePerMonth: 890,
+    avgHandleTime: 12.3,
+    csat: 88,
     flows: [
       {
         id: '2-1',
-        name: "Current Sales Process",
-        description: "Existing product consultation flow",
+        name: "Sales Consultation",
+        description: "Current product consultation process",
         type: 'current',
+        version: "v 2.1",
         lastModified: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       }
@@ -73,20 +124,24 @@ const initialContactDrivers: ContactDriver[] = [
     description: "Customer wants to return a product and get a refund",
     lastModified: new Date().toISOString().split('T')[0],
     tier: "Tier 3",
+    volumePerMonth: 340,
+    avgHandleTime: 15.8,
+    csat: 78,
     flows: [
       {
         id: '3-1',
-        name: "Current Return Process",
-        description: "Manual return authorization process",
+        name: "Return Authorization",
+        description: "Manual return approval process",
         type: 'current',
+        version: "v 1.9",
         lastModified: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       },
       {
         id: '3-2',
-        name: "Automated Return Process",
-        description: "Self-service return portal",
-        type: 'future',
+        name: "Self-Service Returns",
+        description: "Automated return portal",
+        type: 'draft',
         lastModified: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       }
@@ -103,7 +158,20 @@ export function useContactDrivers() {
   useEffect(() => {
     const savedDrivers = localStorage.getItem(STORAGE_KEY);
     if (savedDrivers) {
-      setContactDrivers(JSON.parse(savedDrivers));
+      const parsedDrivers = JSON.parse(savedDrivers);
+      // Migrate existing data to include new fields
+      const migratedDrivers = parsedDrivers.map((driver: LegacyDriver) => ({
+        ...driver,
+        volumePerMonth: driver.volumePerMonth || 0,
+        avgHandleTime: driver.avgHandleTime || 0,
+        csat: driver.csat || 0,
+        flows: driver.flows ? driver.flows.map((flow: LegacyFlow) => ({
+          ...flow,
+          type: flow.type === 'future' ? 'draft' : flow.type,
+          version: flow.version || (flow.type === 'current' ? 'v 1.0' : undefined)
+        })) : []
+      }));
+      setContactDrivers(migratedDrivers);
     } else {
       // If no saved drivers, use initial data
       setContactDrivers(initialContactDrivers);
@@ -118,11 +186,14 @@ export function useContactDrivers() {
     }
   }, [contactDrivers]);
 
-  const addContactDriver = (driverData: Omit<ContactDriver, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
+  const addContactDriver = (driverData: Omit<ContactDriver, 'id' | 'createdAt' | 'lastModified' | 'flows' | 'volumePerMonth' | 'avgHandleTime' | 'csat'>) => {
     const newDriver: ContactDriver = {
       id: Date.now().toString(),
       ...driverData,
       flows: [],
+      volumePerMonth: 0,
+      avgHandleTime: 0,
+      csat: 0,
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString().split('T')[0]
     };
@@ -188,6 +259,73 @@ export function useContactDrivers() {
     return newFlow;
   };
 
+  const deleteFlow = (flowId: string) => {
+    setContactDrivers(prev => prev.map(driver => ({
+      ...driver,
+      flows: driver.flows.filter(flow => flow.id !== flowId),
+      lastModified: new Date().toISOString().split('T')[0]
+    })));
+  };
+
+  const setFlowAsCurrent = (flowId: string) => {
+    setContactDrivers(prev => prev.map(driver => ({
+      ...driver,
+      flows: driver.flows.map(flow => ({
+        ...flow,
+        type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
+        version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version
+      })),
+      lastModified: new Date().toISOString().split('T')[0]
+    })));
+  };
+
+  const duplicateFlow = (flowId: string) => {
+    setContactDrivers(prev => prev.map(driver => {
+      const flowToDuplicate = driver.flows.find(flow => flow.id === flowId);
+      if (flowToDuplicate) {
+        const duplicatedFlow: Flow = {
+          ...flowToDuplicate,
+          id: `${driver.id}-${Date.now()}`,
+          name: `${flowToDuplicate.name} (Copy)`,
+          type: 'draft',
+          version: undefined,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString().split('T')[0]
+        };
+        return {
+          ...driver,
+          flows: [...driver.flows, duplicatedFlow],
+          lastModified: new Date().toISOString().split('T')[0]
+        };
+      }
+      return driver;
+    }));
+  };
+
+  const saveFlowData = (flowId: string, nodes: Node[], edges: Edge[]) => {
+    setContactDrivers(prev => prev.map(driver => ({
+      ...driver,
+      flows: driver.flows.map(flow => 
+        flow.id === flowId 
+          ? { 
+              ...flow, 
+              data: { nodes, edges },
+              lastModified: new Date().toISOString().split('T')[0]
+            }
+          : flow
+      ),
+      lastModified: new Date().toISOString().split('T')[0]
+    })));
+  };
+
+  const getFlowById = (flowId: string): Flow | undefined => {
+    for (const driver of contactDrivers) {
+      const flow = driver.flows.find(f => f.id === flowId);
+      if (flow) return flow;
+    }
+    return undefined;
+  };
+
   const toggleDriverSelection = (id: string) => {
     setSelectedDrivers(prev => 
       prev.includes(id) 
@@ -216,6 +354,11 @@ export function useContactDrivers() {
     deleteSelectedDrivers,
     duplicateContactDriver,
     addFlowToDriver,
+    deleteFlow,
+    setFlowAsCurrent,
+    duplicateFlow,
+    saveFlowData,
+    getFlowById,
     toggleDriverSelection,
     selectAllDrivers,
     clearSelection,
