@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { User, Settings, LogOut, MoreHorizontal, Trash2, Copy, Share } from "lucide-react";
 import { useFlows } from "@/hooks/useFlows";
@@ -115,9 +115,6 @@ export default function Home() {
 
           {/* Flows Table */}
           <Card>
-            <CardHeader>
-              <CardTitle>Your Flows</CardTitle>
-            </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {/* Table Header */}
