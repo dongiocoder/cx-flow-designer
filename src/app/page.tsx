@@ -1,33 +1,52 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, User, Settings, LogOut, MoreHorizontal } from "lucide-react";
+import { User, Settings, LogOut, MoreHorizontal, Trash2, Copy, Share } from "lucide-react";
+import { useFlows } from "@/hooks/useFlows";
+import { NewFlowDialog } from "@/components/NewFlowDialog";
 
 export default function Home() {
-  // Mock data for flows - in real app this would come from API
-  const flows = [
-    {
-      id: 1,
-      name: "Customer Support Flow",
-      description: "Main customer support contact driver mapping",
-      lastModified: "2024-01-15",
-      status: "Active"
-    },
-    {
-      id: 2,
-      name: "Sales Inquiry Flow",
-      description: "Lead generation and sales intent mapping",
-      lastModified: "2024-01-14",
-      status: "Draft"
-    },
-    {
-      id: 3,
-      name: "Product Return Flow",
-      description: "Return process and refund request mapping",
-      lastModified: "2024-01-13",
-      status: "Active"
+  const {
+    flows,
+    selectedFlows,
+    addFlow,
+    deleteFlow,
+    deleteSelectedFlows,
+    duplicateFlow,
+    toggleFlowSelection,
+    selectAllFlows,
+    clearSelection,
+    isAllSelected,
+    isPartiallySelected
+  } = useFlows();
+
+  const handleCreateFlow = (flowData: { name: string; description: string; status: 'Active' | 'Draft' }) => {
+    addFlow(flowData);
+  };
+
+  const handleDeleteFlow = (id: string) => {
+    deleteFlow(id);
+  };
+
+  const handleDuplicateFlow = (id: string) => {
+    duplicateFlow(id);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedFlows.length > 0) {
+      deleteSelectedFlows();
     }
-  ];
+  };
+
+  const handleMasterCheckboxChange = () => {
+    if (isAllSelected) {
+      clearSelection();
+    } else {
+      selectAllFlows();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,10 +96,7 @@ export default function Home() {
                 Manage your customer experience flows and contact drivers
               </p>
             </div>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Flow
-            </Button>
+            <NewFlowDialog onCreateFlow={handleCreateFlow} />
           </div>
 
           {/* Flows Table */}
@@ -96,7 +112,15 @@ export default function Home() {
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground border-b pb-3">
                   <div className="col-span-1">
-                    <input type="checkbox" className="rounded border-gray-300" />
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-gray-300" 
+                      checked={isAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isPartiallySelected;
+                      }}
+                      onChange={handleMasterCheckboxChange}
+                    />
                   </div>
                   <div className="col-span-4">Name</div>
                   <div className="col-span-3">Description</div>
@@ -106,53 +130,84 @@ export default function Home() {
                 </div>
 
                 {/* Table Rows */}
-                {flows.map((flow) => (
-                  <div key={flow.id} className="grid grid-cols-12 gap-4 items-center py-3 border-b last:border-b-0 hover:bg-muted/50">
-                    <div className="col-span-1">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                    </div>
-                    <div className="col-span-4">
-                      <div className="font-medium">{flow.name}</div>
-                    </div>
-                    <div className="col-span-3">
-                      <div className="text-sm text-muted-foreground">{flow.description}</div>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="text-sm text-muted-foreground">{flow.lastModified}</div>
-                    </div>
-                    <div className="col-span-1">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        flow.status === 'Active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {flow.status}
-                      </span>
-                    </div>
-                    <div className="col-span-1">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                          <DropdownMenuItem>Share</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                {flows.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No flows yet. Create your first CX flow to get started!
                   </div>
-                ))}
+                ) : (
+                  flows.map((flow) => (
+                    <div key={flow.id} className="grid grid-cols-12 gap-4 items-center py-3 border-b last:border-b-0 hover:bg-muted/50">
+                      <div className="col-span-1">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300" 
+                          checked={selectedFlows.includes(flow.id)}
+                          onChange={() => toggleFlowSelection(flow.id)}
+                        />
+                      </div>
+                      <div className="col-span-4">
+                        <div className="font-medium">{flow.name}</div>
+                      </div>
+                      <div className="col-span-3">
+                        <div className="text-sm text-muted-foreground">{flow.description}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-sm text-muted-foreground">{flow.lastModified}</div>
+                      </div>
+                      <div className="col-span-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          flow.status === 'Active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {flow.status}
+                        </span>
+                      </div>
+                      <div className="col-span-1">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => console.log('Edit flow:', flow.id)}>
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicateFlow(flow.id)}>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => console.log('Share flow:', flow.id)}>
+                              <Share className="mr-2 h-4 w-4" />
+                              Share
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => handleDeleteFlow(flow.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Bulk Actions */}
               <div className="flex items-center justify-between pt-4">
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
-                    Bulk Edit
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    disabled={selectedFlows.length === 0}
+                    onClick={handleBulkDelete}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Selected ({selectedFlows.length})
                   </Button>
                   <Button variant="outline" size="sm">
                     Export
