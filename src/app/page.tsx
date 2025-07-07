@@ -3,40 +3,43 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, MoreHorizontal, Trash2, Copy, Share } from "lucide-react";
-import { useFlows } from "@/hooks/useFlows";
-import { NewFlowDialog } from "@/components/NewFlowDialog";
+import { User, Settings, LogOut, MoreHorizontal, Trash2, Copy, Share, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { useContactDrivers } from "@/hooks/useContactDrivers";
+import { NewContactDriverDialog } from "@/components/NewContactDriverDialog";
+import { useState } from "react";
 
 export default function Home() {
   const {
-    flows,
-    selectedFlows,
-    addFlow,
-    deleteFlow,
-    deleteSelectedFlows,
-    duplicateFlow,
-    toggleFlowSelection,
-    selectAllFlows,
+    contactDrivers,
+    selectedDrivers,
+    addContactDriver,
+    deleteContactDriver,
+    deleteSelectedDrivers,
+    duplicateContactDriver,
+    toggleDriverSelection,
+    selectAllDrivers,
     clearSelection,
     isAllSelected,
     isPartiallySelected
-  } = useFlows();
+  } = useContactDrivers();
 
-  const handleCreateFlow = (flowData: { name: string; description: string; status: 'Active' | 'Draft'; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => {
-    addFlow(flowData);
+  const [expandedDrivers, setExpandedDrivers] = useState<string[]>([]);
+
+  const handleCreateContactDriver = (driverData: { name: string; description: string; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => {
+    addContactDriver(driverData);
   };
 
-  const handleDeleteFlow = (id: string) => {
-    deleteFlow(id);
+  const handleDeleteDriver = (id: string) => {
+    deleteContactDriver(id);
   };
 
-  const handleDuplicateFlow = (id: string) => {
-    duplicateFlow(id);
+  const handleDuplicateDriver = (id: string) => {
+    duplicateContactDriver(id);
   };
 
   const handleBulkDelete = () => {
-    if (selectedFlows.length > 0) {
-      deleteSelectedFlows();
+    if (selectedDrivers.length > 0) {
+      deleteSelectedDrivers();
     }
   };
 
@@ -44,8 +47,16 @@ export default function Home() {
     if (isAllSelected) {
       clearSelection();
     } else {
-      selectAllFlows();
+      selectAllDrivers();
     }
+  };
+
+  const toggleDriverExpansion = (driverId: string) => {
+    setExpandedDrivers(prev => 
+      prev.includes(driverId)
+        ? prev.filter(id => id !== driverId)
+        : [...prev, driverId]
+    );
   };
 
   return (
@@ -91,14 +102,14 @@ export default function Home() {
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Flows</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">Contact Drivers</h2>
               <p className="text-muted-foreground">
-                Manage your customer experience flows and contact drivers
+                Manage customer contact drivers and their associated flows
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              {/* Bulk Delete Button - Only show when multiple flows are selected */}
-              {selectedFlows.length > 1 && (
+              {/* Bulk Delete Button - Only show when multiple drivers are selected */}
+              {selectedDrivers.length > 1 && (
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -106,14 +117,14 @@ export default function Home() {
                   className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected ({selectedFlows.length})
+                  Delete Selected ({selectedDrivers.length})
                 </Button>
               )}
-              <NewFlowDialog onCreateFlow={handleCreateFlow} />
+              <NewContactDriverDialog onCreateContactDriver={handleCreateContactDriver} />
             </div>
           </div>
 
-          {/* Flows Table */}
+          {/* Contact Drivers Table */}
           <Card>
             <CardContent>
               <div className="space-y-4">
@@ -130,88 +141,163 @@ export default function Home() {
                       onChange={handleMasterCheckboxChange}
                     />
                   </div>
-                  <div className="col-span-3">Name</div>
+                  <div className="col-span-1"></div> {/* Expand/Collapse */}
+                  <div className="col-span-4">Contact Driver</div>
                   <div className="col-span-3">Description</div>
-                  <div className="col-span-2">Last Modified</div>
-                  <div className="col-span-1">Status</div>
+                  <div className="col-span-1">Last Modified</div>
                   <div className="col-span-1">Tier</div>
                   <div className="col-span-1">Actions</div>
                 </div>
 
                 {/* Table Rows */}
-                {flows.length === 0 ? (
+                {contactDrivers.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    No flows yet. Create your first flow to get started!
+                    No contact drivers yet. Create your first contact driver to get started!
                   </div>
                 ) : (
-                  flows.map((flow) => (
-                    <div key={flow.id} className="grid grid-cols-12 gap-4 items-center py-3 border-b last:border-b-0 hover:bg-muted/50">
-                      <div className="col-span-1">
-                        <input 
-                          type="checkbox" 
-                          className="rounded border-gray-300" 
-                          checked={selectedFlows.includes(flow.id)}
-                          onChange={() => toggleFlowSelection(flow.id)}
-                        />
+                  contactDrivers.map((driver) => (
+                    <div key={driver.id} className="space-y-2">
+                      {/* Contact Driver Row */}
+                      <div className="grid grid-cols-12 gap-4 items-center py-3 border-b hover:bg-muted/50">
+                        <div className="col-span-1">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-gray-300" 
+                            checked={selectedDrivers.includes(driver.id)}
+                            onChange={() => toggleDriverSelection(driver.id)}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => toggleDriverExpansion(driver.id)}
+                          >
+                            {expandedDrivers.includes(driver.id) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                        <div className="col-span-4">
+                          <div className="font-medium">{driver.name}</div>
+                        </div>
+                        <div className="col-span-3">
+                          <div className="text-sm text-muted-foreground">{driver.description}</div>
+                        </div>
+                        <div className="col-span-1">
+                          <div className="text-sm text-muted-foreground">{driver.lastModified}</div>
+                        </div>
+                        <div className="col-span-1">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            driver.tier === 'Tier 1' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : driver.tier === 'Tier 2'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {driver.tier}
+                          </span>
+                        </div>
+                        <div className="col-span-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => console.log('Edit driver:', driver.id)}>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicateDriver(driver.id)}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => console.log('Share driver:', driver.id)}>
+                                <Share className="mr-2 h-4 w-4" />
+                                Share
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onClick={() => handleDeleteDriver(driver.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                      <div className="col-span-3">
-                        <div className="font-medium">{flow.name}</div>
-                      </div>
-                      <div className="col-span-3">
-                        <div className="text-sm text-muted-foreground">{flow.description}</div>
-                      </div>
-                      <div className="col-span-2">
-                        <div className="text-sm text-muted-foreground">{flow.lastModified}</div>
-                      </div>
-                      <div className="col-span-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          flow.status === 'Active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {flow.status}
-                        </span>
-                      </div>
-                      <div className="col-span-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          flow.tier === 'Tier 1' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : flow.tier === 'Tier 2'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {flow.tier}
-                        </span>
-                      </div>
-                      <div className="col-span-1">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => console.log('Edit flow:', flow.id)}>
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicateFlow(flow.id)}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => console.log('Share flow:', flow.id)}>
-                              <Share className="mr-2 h-4 w-4" />
-                              Share
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onClick={() => handleDeleteFlow(flow.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+
+                      {/* Nested Flows - Show when expanded */}
+                      {expandedDrivers.includes(driver.id) && (
+                        <div className="ml-8 space-y-2">
+                          {driver.flows.length === 0 ? (
+                            <div className="text-sm text-muted-foreground py-2 flex items-center justify-between">
+                              <span>No flows yet.</span>
+                              <Button variant="outline" size="sm">
+                                <Plus className="mr-2 h-3 w-3" />
+                                Add Flow
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Current State Flows */}
+                              {driver.flows.filter(flow => flow.type === 'current').length > 0 && (
+                                <div className="space-y-1">
+                                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                    Current State Flows
+                                  </div>
+                                  {driver.flows.filter(flow => flow.type === 'current').map(flow => (
+                                    <div key={flow.id} className="grid grid-cols-10 gap-4 items-center py-2 pl-4 bg-green-50 rounded-md text-sm">
+                                      <div className="col-span-4 font-medium text-green-800">{flow.name}</div>
+                                      <div className="col-span-4 text-green-700">{flow.description}</div>
+                                      <div className="col-span-1 text-green-600">{flow.lastModified}</div>
+                                      <div className="col-span-1">
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                          <MoreHorizontal className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Future State Flows */}
+                              {driver.flows.filter(flow => flow.type === 'future').length > 0 && (
+                                <div className="space-y-1">
+                                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                    Future State Flows
+                                  </div>
+                                  {driver.flows.filter(flow => flow.type === 'future').map(flow => (
+                                    <div key={flow.id} className="grid grid-cols-10 gap-4 items-center py-2 pl-4 bg-blue-50 rounded-md text-sm">
+                                      <div className="col-span-4 font-medium text-blue-800">{flow.name}</div>
+                                      <div className="col-span-4 text-blue-700">{flow.description}</div>
+                                      <div className="col-span-1 text-blue-600">{flow.lastModified}</div>
+                                      <div className="col-span-1">
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                          <MoreHorizontal className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Add Flow Button */}
+                              <div className="pt-2">
+                                <Button variant="outline" size="sm">
+                                  <Plus className="mr-2 h-3 w-3" />
+                                  Add Flow
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

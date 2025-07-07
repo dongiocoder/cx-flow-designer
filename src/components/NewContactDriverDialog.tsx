@@ -8,24 +8,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 
-interface NewFlowDialogProps {
-  onCreateFlow: (flowData: { name: string; description: string; status: 'Active' | 'Draft'; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => void;
+interface NewContactDriverDialogProps {
+  onCreateContactDriver: (driverData: { name: string; description: string; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => void;
 }
 
-export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
+export function NewContactDriverDialog({ onCreateContactDriver }: NewContactDriverDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    status: 'Draft' as 'Active' | 'Draft',
     tier: 'Tier 1' as 'Tier 1' | 'Tier 2' | 'Tier 3'
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name.trim()) {
-      onCreateFlow(formData);
-      setFormData({ name: '', description: '', status: 'Draft', tier: 'Tier 1' });
+      onCreateContactDriver(formData);
+      setFormData({ name: '', description: '', tier: 'Tier 1' });
       setOpen(false);
     }
   };
@@ -34,24 +33,24 @@ export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
     <>
       <Button onClick={() => setOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
-        New Flow
+        New Contact Driver
       </Button>
       
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create New Flow</DialogTitle>
+            <DialogTitle>Create New Contact Driver</DialogTitle>
             <DialogDescription>
-              Create a new customer experience flow to map contact drivers and intents.
+              Create a new contact driver to represent why customers reach out to your organization.
             </DialogDescription>
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Flow Name</Label>
+              <Label htmlFor="name">Contact Driver Name</Label>
               <Input
                 id="name"
-                placeholder="e.g., Customer Support Flow"
+                placeholder="e.g., Account Access Issues"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 required
@@ -62,24 +61,11 @@ export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Describe the purpose of this flow..."
+                placeholder="Describe the customer situation or reason for contact..."
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 rows={3}
               />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'Active' | 'Draft' }))}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="Draft">Draft</option>
-                <option value="Active">Active</option>
-              </select>
             </div>
             
             <div className="space-y-2">
@@ -100,7 +86,7 @@ export function NewFlowDialog({ onCreateFlow }: NewFlowDialogProps) {
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create Flow</Button>
+              <Button type="submit">Create Contact Driver</Button>
             </DialogFooter>
           </form>
         </DialogContent>
