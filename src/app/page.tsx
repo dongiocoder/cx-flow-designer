@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { User, Settings, LogOut, MoreHorizontal, Trash2, Copy, Share } from "lucide-react";
 import { useFlows } from "@/hooks/useFlows";
@@ -55,7 +55,7 @@ export default function Home() {
         <div className="flex h-16 items-center justify-between px-6">
           {/* Left side - Brand */}
           <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-foreground">CxFlow Designer</h1>
+            <h1 className="text-xl font-semibold text-foreground">Flow Designer</h1>
           </div>
 
           {/* Right side - Profile */}
@@ -91,21 +91,32 @@ export default function Home() {
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight">CX Flows</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">Flows</h2>
               <p className="text-muted-foreground">
                 Manage your customer experience flows and contact drivers
               </p>
             </div>
-            <NewFlowDialog onCreateFlow={handleCreateFlow} />
+            <div className="flex items-center space-x-2">
+              {/* Bulk Delete Button - Only show when multiple flows are selected */}
+              {selectedFlows.length > 1 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected ({selectedFlows.length})
+                </Button>
+              )}
+              <NewFlowDialog onCreateFlow={handleCreateFlow} />
+            </div>
           </div>
 
           {/* Flows Table */}
           <Card>
             <CardHeader>
               <CardTitle>Your Flows</CardTitle>
-              <CardDescription>
-                Manage and organize your customer experience flow designs
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -132,7 +143,7 @@ export default function Home() {
                 {/* Table Rows */}
                 {flows.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    No flows yet. Create your first CX flow to get started!
+                    No flows yet. Create your first flow to get started!
                   </div>
                 ) : (
                   flows.map((flow) => (
@@ -195,27 +206,6 @@ export default function Home() {
                     </div>
                   ))
                 )}
-              </div>
-
-              {/* Bulk Actions */}
-              <div className="flex items-center justify-between pt-4">
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    disabled={selectedFlows.length === 0}
-                    onClick={handleBulkDelete}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Selected ({selectedFlows.length})
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Export
-                  </Button>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {flows.length} flow{flows.length !== 1 ? 's' : ''} total
-                </div>
               </div>
             </CardContent>
           </Card>
