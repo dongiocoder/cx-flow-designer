@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Badge } from "@/components/ui/badge";
 import { 
   X, 
@@ -76,7 +76,13 @@ export function DriverDrawer({
     isCurrentFlow = false, 
     onClick 
   }: { 
-    flow: any, 
+    flow: { 
+      id: string;
+      name: string;
+      description: string;
+      version?: string;
+      lastModified: string;
+    }, 
     isCurrentFlow?: boolean, 
     onClick: () => void 
   }) => (

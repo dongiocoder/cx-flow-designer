@@ -194,6 +194,7 @@ export function useContactDrivers() {
       // Migrate existing data to include new fields
       const migratedDrivers = parsedDrivers.map((driver: LegacyDriver) => {
         // Remove tier and add containment fields if missing
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { tier, ...driverWithoutTier } = driver;
         const volume = driver.volumePerMonth || 0;
         return {
