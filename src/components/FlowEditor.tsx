@@ -19,7 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, Plus, Grid3X3 } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { PillNode, StepNode, RouterNode, type CustomNodeData } from './FlowNodes';
 import { CustomEdge } from './CustomEdge';
 
@@ -171,13 +171,17 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
 
   // Create node types with delete and edit functionality
   const nodeTypesWithCallbacks = useMemo(() => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pill: (props: any) => <PillNode {...props} onDelete={handleDeleteNode} onNodeEdit={handleNodeEdit} />,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     step: (props: any) => <StepNode {...props} onDelete={handleDeleteNode} onNodeEdit={handleNodeEdit} />,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     router: (props: any) => <RouterNode {...props} onDelete={handleDeleteNode} onNodeEdit={handleNodeEdit} />,
   }), [handleDeleteNode, handleNodeEdit]);
 
   // Create edge types with delete functionality
   const edgeTypes = useMemo(() => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     default: (props: any) => <CustomEdge {...props} data={{ ...props.data, onDelete: (id: string) => {
       setEdges((eds) => eds.filter((edge) => edge.id !== id));
       setIsDirty(true);

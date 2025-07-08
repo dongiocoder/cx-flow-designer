@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import type { Node } from '@xyflow/react';
 import { Play, CheckCircle, AlertTriangle, Bot, Phone, Mail, MessageCircle, User, Settings, Target, Globe, HelpCircle, Video, MessageSquare, UserCheck, Search, ClipboardCheck, BarChart3, ChevronDown } from 'lucide-react';
 
 // Node data interface
@@ -20,9 +19,7 @@ interface CustomNodeProps {
   onNodeEdit?: (nodeId: string, newData: Partial<CustomNodeData>) => void;
 }
 
-interface NodeEditingProps {
-  onNodeEdit?: (nodeId: string, newData: Partial<CustomNodeData>) => void;
-}
+
 
 // Step type presets based on flow-canvas-1.md spec
 const STEP_TYPE_PRESETS = {
@@ -84,7 +81,9 @@ const getCategoryColors = (category: string) => {
 };
 
 // Get step icon based on step type
-const getStepIcon = (stepType: string) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getStepIcon = (stepType: string): any => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const iconMap: Record<string, any> = {
     website: Globe,
     faq: HelpCircle,
@@ -165,18 +164,31 @@ const EditableText = ({
   };
 
   if (isEditing) {
-    const Component = multiline ? 'textarea' : 'input';
+    if (multiline) {
+      return (
+        <textarea
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          className={`${className} bg-white border border-blue-300 rounded px-1 outline-none ring-1 ring-blue-200 resize-none`}
+          style={style}
+          placeholder={placeholder}
+          rows={2}
+        />
+      );
+    }
     return (
-      <Component
-        ref={inputRef as any}
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
         value={editValue}
         onChange={(e) => setEditValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        className={`${className} bg-white border border-blue-300 rounded px-1 outline-none ring-1 ring-blue-200 resize-none`}
+        className={`${className} bg-white border border-blue-300 rounded px-1 outline-none ring-1 ring-blue-200`}
         style={style}
         placeholder={placeholder}
-        rows={multiline ? 2 : undefined}
       />
     );
   }
@@ -203,6 +215,7 @@ const EditableDropdown = ({
 }: {
   value: string;
   onChange: (value: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options: Array<{ value: string; label: string; icon: any }>;
   className?: string;
   style?: React.CSSProperties;
@@ -271,7 +284,7 @@ const EditableDropdown = ({
 };
 
 // Pill-shaped node for Start/Outcome
-export function PillNode({ data, selected, id, onDelete, onNodeEdit }: CustomNodeProps) {
+export function PillNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
   const colors = getCategoryColors(data.category || 'start');
   const isStart = data.category === 'start';
   const isSuccess = data.stepType === 'resolved';
@@ -404,7 +417,7 @@ export function PillNode({ data, selected, id, onDelete, onNodeEdit }: CustomNod
 }
 
 // Rectangular node for regular steps
-export function StepNode({ data, selected, id, onDelete, onNodeEdit }: CustomNodeProps) {
+export function StepNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
   const colors = getCategoryColors(data.category || 'self-service');
   const stepTypeOptions = STEP_TYPE_PRESETS[data.category || 'self-service'] || [];
   
@@ -423,9 +436,7 @@ export function StepNode({ data, selected, id, onDelete, onNodeEdit }: CustomNod
     }
   };
 
-  // Get the display label for the selected step type
-  const selectedOption = stepTypeOptions.find(opt => opt.value === data.stepType);
-  const displayLabel = selectedOption?.label || 'Select Step Type';
+
 
   return (
     <div 
@@ -516,7 +527,7 @@ export function StepNode({ data, selected, id, onDelete, onNodeEdit }: CustomNod
 }
 
 // Router node for complex branching
-export function RouterNode({ data, selected, id, onDelete, onNodeEdit }: CustomNodeProps) {
+export function RouterNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
   const handleLabelChange = (newLabel: string) => {
     if (onNodeEdit) {
       onNodeEdit(id, { label: newLabel });

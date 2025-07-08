@@ -18,7 +18,6 @@ export default function Home() {
   const {
     contactDrivers,
     selectedDrivers,
-    isLoading,
     storageStatus,
     addContactDriver,
     updateContactDriver,

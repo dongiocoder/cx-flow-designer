@@ -7,36 +7,9 @@ export interface FlowData {
   edges: Edge[];
 }
 
-interface LegacyFlow {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  lastModified: string;
-  createdAt: string;
-  version?: string;
-  data?: FlowData;
-}
 
-interface LegacyDriver {
-  id: string;
-  name: string;
-  description: string;
-  lastModified: string;
-  tier?: 'Tier 1' | 'Tier 2' | 'Tier 3';
-  containmentPercentage?: number;
-  containmentVolume?: number;
-  volumePerMonth?: number;
-  avgHandleTime?: number;
-  csat?: number;
-  qaScore?: number;
-  phoneVolume?: number;
-  emailVolume?: number;
-  chatVolume?: number;
-  otherVolume?: number;
-  flows?: LegacyFlow[];
-  createdAt: string;
-}
+
+
 
 export interface Flow {
   id: string;
@@ -69,7 +42,7 @@ export interface ContactDriver {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'cx-contact-drivers';
+
 
 // Initial mock data
 const initialContactDrivers: ContactDriver[] = [
@@ -198,8 +171,10 @@ export function useContactDrivers() {
         
         if (savedDrivers.length > 0) {
           // Migrate existing data to include new fields if needed
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const migratedDrivers = savedDrivers.map((driver: any) => {
             // Remove tier and add containment fields if missing
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { tier, ...driverWithoutTier } = driver;
             const volume = driver.volumePerMonth || 0;
             return {
@@ -214,6 +189,7 @@ export function useContactDrivers() {
               emailVolume: driver.emailVolume || Math.round(volume * 0.3),
               chatVolume: driver.chatVolume || Math.round(volume * 0.1),
               otherVolume: driver.otherVolume || 0,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               flows: driver.flows ? driver.flows.map((flow: any) => ({
                 ...flow,
                 type: flow.type === 'future' ? 'draft' : flow.type,

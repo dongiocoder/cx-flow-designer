@@ -13,7 +13,6 @@ export function CustomEdge({
   style,
   markerEnd,
   label,
-  selected,
   data,
 }: EdgeProps) {
   const [showDelete, setShowDelete] = useState(false);
