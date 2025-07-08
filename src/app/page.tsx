@@ -28,6 +28,7 @@ export default function Home() {
     setFlowAsCurrent,
     duplicateFlow,
     saveFlowData,
+    updateFlow,
     getFlowById,
     toggleDriverSelection,
     selectAllDrivers,
@@ -365,12 +366,12 @@ export default function Home() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                                              <div className="col-span-1">Volume</div>
+                      <div className="col-span-1">Volume</div>
                       <div className="col-span-1">Avg Handle Time</div>
                       <div className="col-span-1">CSAT</div>
-                      <div className="col-span-1">Current Flow</div>
+                      <div className="col-span-2">Flow</div>
                       <div className="col-span-1">Drafts count</div>
-                      <div className="col-span-2">Last modified</div>
+                      <div className="col-span-1">Last modified</div>
                       <div className="col-span-1"></div>
                     </div>
 
@@ -439,10 +440,10 @@ export default function Home() {
                             <div className="col-span-1">
                               <div className="text-sm">{driver.csat}%</div>
                             </div>
-                            <div className="col-span-1">
+                            <div className="col-span-2">
                               {currentFlow ? (
                                 <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-50 text-green-800 border border-green-200">
-                                  {currentFlow.version || 'v 1.0'}
+                                  {currentFlow.name}
                                 </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground">No current flow</span>
@@ -457,7 +458,7 @@ export default function Home() {
                                 <span className="text-xs text-muted-foreground">0</span>
                               )}
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-1">
                               <div className="text-sm text-muted-foreground">{driver.lastModified}</div>
                             </div>
                             <div className="col-span-1 flex justify-center">
@@ -514,6 +515,7 @@ export default function Home() {
               driverName={currentFlowDriver.name}
               onBack={handleFlowEditorBack}
               onSave={handleSaveFlow}
+              updateFlow={updateFlow}
             />
           ) : (
             <div className="h-full bg-gray-50 flex items-center justify-center">

@@ -371,6 +371,22 @@ export function useContactDrivers() {
     })));
   };
 
+  const updateFlow = (flowId: string, updates: Partial<Pick<Flow, 'name' | 'description'>>) => {
+    setContactDrivers(prev => prev.map(driver => ({
+      ...driver,
+      flows: driver.flows.map(flow => 
+        flow.id === flowId 
+          ? { 
+              ...flow, 
+              ...updates,
+              lastModified: new Date().toISOString().split('T')[0]
+            }
+          : flow
+      ),
+      lastModified: new Date().toISOString().split('T')[0]
+    })));
+  };
+
   const getFlowById = (flowId: string): Flow | undefined => {
     for (const driver of contactDrivers) {
       const flow = driver.flows.find(f => f.id === flowId);
@@ -411,6 +427,7 @@ export function useContactDrivers() {
     setFlowAsCurrent,
     duplicateFlow,
     saveFlowData,
+    updateFlow,
     getFlowById,
     toggleDriverSelection,
     selectAllDrivers,
