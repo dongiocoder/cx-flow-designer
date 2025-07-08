@@ -18,6 +18,8 @@ export default function Home() {
   const {
     contactDrivers,
     selectedDrivers,
+    isLoading,
+    storageStatus,
     addContactDriver,
     updateContactDriver,
     deleteContactDriver,
@@ -518,6 +520,7 @@ export default function Home() {
               updateFlow={updateFlow}
               initialNodes={currentFlow.data?.nodes || []}
               initialEdges={currentFlow.data?.edges || []}
+              storageStatus={storageStatus}
             />
           ) : (
             <div className="h-full bg-gray-50 flex items-center justify-center">

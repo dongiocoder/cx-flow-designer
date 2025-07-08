@@ -32,6 +32,7 @@ interface FlowEditorProps {
   updateFlow: (flowId: string, updates: Partial<{ name: string; description: string }>) => void;
   initialNodes?: Node[];
   initialEdges?: Edge[];
+  storageStatus?: 'github' | 'localStorage' | 'none';
 }
 
 // Start with empty canvas
@@ -39,7 +40,7 @@ const initialNodes: Node<CustomNodeData>[] = [];
 
 const initialEdges: Edge[] = [];
 
-function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack, onSave, updateFlow, initialNodes: propsInitialNodes = [], initialEdges: propsInitialEdges = [] }: FlowEditorProps) {
+function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack, onSave, updateFlow, initialNodes: propsInitialNodes = [], initialEdges: propsInitialEdges = [], storageStatus = 'localStorage' }: FlowEditorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeData>>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [flowName, setFlowName] = useState(initialFlowName);
@@ -425,6 +426,18 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
             
             <div className="text-sm text-muted-foreground">
               {isDirty ? 'Unsaved changes' : lastSaved ? `Auto-saved ${formatLastSaved(lastSaved)}` : 'No changes yet'}
+            </div>
+            
+            {/* Storage status indicator */}
+            <div className="text-xs text-muted-foreground flex items-center space-x-1">
+              <div className={`w-2 h-2 rounded-full ${
+                storageStatus === 'github' ? 'bg-green-500' : 
+                storageStatus === 'localStorage' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <span>
+                {storageStatus === 'github' ? 'GitHub' : 
+                 storageStatus === 'localStorage' ? 'Local' : 'Offline'}
+              </span>
             </div>
           </div>
         </div>

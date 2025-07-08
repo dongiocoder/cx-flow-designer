@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Node, Edge } from '@xyflow/react';
+import { storageService } from '@/lib/storage';
 
 export interface FlowData {
   nodes: Node[];
@@ -185,51 +186,82 @@ const initialContactDrivers: ContactDriver[] = [
 export function useContactDrivers() {
   const [contactDrivers, setContactDrivers] = useState<ContactDriver[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [storageStatus, setStorageStatus] = useState<'github' | 'localStorage' | 'none'>('none');
 
-  // Load contact drivers from localStorage on mount
+  // Load contact drivers from storage on mount
   useEffect(() => {
-    const savedDrivers = localStorage.getItem(STORAGE_KEY);
-    if (savedDrivers) {
-      const parsedDrivers = JSON.parse(savedDrivers);
-      // Migrate existing data to include new fields
-      const migratedDrivers = parsedDrivers.map((driver: LegacyDriver) => {
-        // Remove tier and add containment fields if missing
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { tier, ...driverWithoutTier } = driver;
-        const volume = driver.volumePerMonth || 0;
-        return {
-          ...driverWithoutTier,
-          volumePerMonth: volume,
-          avgHandleTime: driver.avgHandleTime || 0,
-          csat: driver.csat || 0,
-          qaScore: driver.qaScore || 98,
-          containmentPercentage: driver.containmentPercentage || 60, // Default containment
-          containmentVolume: driver.containmentVolume || Math.round(volume * 0.6),
-          phoneVolume: driver.phoneVolume || Math.round(volume * 0.6),
-          emailVolume: driver.emailVolume || Math.round(volume * 0.3),
-          chatVolume: driver.chatVolume || Math.round(volume * 0.1),
-          otherVolume: driver.otherVolume || 0,
-          flows: driver.flows ? driver.flows.map((flow: LegacyFlow) => ({
-            ...flow,
-            type: flow.type === 'future' ? 'draft' : flow.type,
-            version: flow.version || (flow.type === 'current' ? 'v 1.0' : undefined)
-          })) : []
-        };
-      });
-      setContactDrivers(migratedDrivers);
-    } else {
-      // If no saved drivers, use initial data
-      setContactDrivers(initialContactDrivers);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialContactDrivers));
-    }
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const savedDrivers = await storageService.loadData();
+        
+        if (savedDrivers.length > 0) {
+          // Migrate existing data to include new fields if needed
+          const migratedDrivers = savedDrivers.map((driver: any) => {
+            // Remove tier and add containment fields if missing
+            const { tier, ...driverWithoutTier } = driver;
+            const volume = driver.volumePerMonth || 0;
+            return {
+              ...driverWithoutTier,
+              volumePerMonth: volume,
+              avgHandleTime: driver.avgHandleTime || 0,
+              csat: driver.csat || 0,
+              qaScore: driver.qaScore || 98,
+              containmentPercentage: driver.containmentPercentage || 60,
+              containmentVolume: driver.containmentVolume || Math.round(volume * 0.6),
+              phoneVolume: driver.phoneVolume || Math.round(volume * 0.6),
+              emailVolume: driver.emailVolume || Math.round(volume * 0.3),
+              chatVolume: driver.chatVolume || Math.round(volume * 0.1),
+              otherVolume: driver.otherVolume || 0,
+              flows: driver.flows ? driver.flows.map((flow: any) => ({
+                ...flow,
+                type: flow.type === 'future' ? 'draft' : flow.type,
+                version: flow.version || (flow.type === 'current' ? 'v 1.0' : undefined)
+              })) : []
+            };
+          });
+          setContactDrivers(migratedDrivers);
+        } else {
+          // If no saved drivers, use initial data
+          setContactDrivers(initialContactDrivers);
+          // Save initial data to storage
+          await storageService.saveData(initialContactDrivers);
+        }
+        
+        // Update storage status
+        const status = storageService.getStorageStatus();
+        setStorageStatus(status.type);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        // Fallback to initial data
+        setContactDrivers(initialContactDrivers);
+        setStorageStatus('localStorage');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  // Save contact drivers to localStorage whenever they change
+  // Save contact drivers to storage whenever they change
   useEffect(() => {
-    if (contactDrivers.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(contactDrivers));
+    if (contactDrivers.length > 0 && !isLoading) {
+      const saveData = async () => {
+        try {
+          await storageService.saveData(contactDrivers);
+          // Update storage status after successful save
+          const status = storageService.getStorageStatus();
+          setStorageStatus(status.type);
+        } catch (error) {
+          console.error('Failed to save data:', error);
+        }
+      };
+      
+      saveData();
     }
-  }, [contactDrivers]);
+  }, [contactDrivers, isLoading]);
 
   const addContactDriver = (driverData: Omit<ContactDriver, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
     const newDriver: ContactDriver = {
@@ -417,6 +449,8 @@ export function useContactDrivers() {
   return {
     contactDrivers,
     selectedDrivers,
+    isLoading,
+    storageStatus,
     addContactDriver,
     updateContactDriver,
     deleteContactDriver,
