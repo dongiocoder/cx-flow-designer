@@ -516,6 +516,8 @@ export default function Home() {
               onBack={handleFlowEditorBack}
               onSave={handleSaveFlow}
               updateFlow={updateFlow}
+              initialNodes={currentFlow.data?.nodes || []}
+              initialEdges={currentFlow.data?.edges || []}
             />
           ) : (
             <div className="h-full bg-gray-50 flex items-center justify-center">

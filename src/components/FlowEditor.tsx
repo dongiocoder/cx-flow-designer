@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ReactFlow, 
   Background, 
@@ -20,6 +20,8 @@ import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ArrowLeft, Plus, Grid3X3 } from 'lucide-react';
+import { PillNode, StepNode, RouterNode, type CustomNodeData } from './FlowNodes';
+import { CustomEdge } from './CustomEdge';
 
 interface FlowEditorProps {
   flowId: string;
@@ -28,63 +30,58 @@ interface FlowEditorProps {
   onBack: () => void;
   onSave: (flowId: string, nodes: Node[], edges: Edge[]) => void;
   updateFlow: (flowId: string, updates: Partial<{ name: string; description: string }>) => void;
+  initialNodes?: Node[];
+  initialEdges?: Edge[];
 }
 
-// Sample initial nodes and edges
-const initialNodes: Node[] = [
-  {
-    id: '1',
-    position: { x: 250, y: 100 },
-    data: { label: 'Start: Customer Contact' },
-    type: 'input',
-    style: { background: '#e1f5fe', border: '2px solid #0277bd' }
-  },
-  {
-    id: '2',
-    position: { x: 250, y: 200 },
-    data: { label: 'Identify Issue Type' },
-    style: { background: '#f3e5f5', border: '2px solid #7b1fa2' }
-  },
-  {
-    id: '3',
-    position: { x: 100, y: 300 },
-    data: { label: 'Technical Support' },
-    style: { background: '#e8f5e8', border: '2px solid #388e3c' }
-  },
-  {
-    id: '4',
-    position: { x: 400, y: 300 },
-    data: { label: 'Account Services' },
-    style: { background: '#e8f5e8', border: '2px solid #388e3c' }
-  },
-  {
-    id: '5',
-    position: { x: 250, y: 400 },
-    data: { label: 'Resolution Complete' },
-    type: 'output',
-    style: { background: '#ffebee', border: '2px solid #d32f2f' }
-  }
-];
+// Start with empty canvas
+const initialNodes: Node<CustomNodeData>[] = [];
 
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true },
-  { id: 'e2-3', source: '2', target: '3', label: 'Technical Issue' },
-  { id: 'e2-4', source: '2', target: '4', label: 'Account Issue' },
-  { id: 'e3-5', source: '3', target: '5' },
-  { id: 'e4-5', source: '4', target: '5' }
-];
+const initialEdges: Edge[] = [];
 
-function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack, onSave, updateFlow }: FlowEditorProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack, onSave, updateFlow, initialNodes: propsInitialNodes = [], initialEdges: propsInitialEdges = [] }: FlowEditorProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeData>>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [flowName, setFlowName] = useState(initialFlowName);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isEditingFlowName, setIsEditingFlowName] = useState(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasLoadedInitialData = useRef(false);
+  const currentFlowId = useRef(flowId);
 
-  // Auto-save functionality
+  // Load initial flow data when flowId or data changes
+  useEffect(() => {
+    // Reset if this is a different flow
+    if (currentFlowId.current !== flowId) {
+      hasLoadedInitialData.current = false;
+      currentFlowId.current = flowId;
+    }
+
+         // Load the flow data
+     setNodes(propsInitialNodes as Node<CustomNodeData>[]);
+     setEdges(propsInitialEdges);
+    
+    if (propsInitialNodes.length > 0 || propsInitialEdges.length > 0) {
+      setLastSaved(new Date());
+      setIsDirty(false);
+    } else {
+      setLastSaved(null);
+      setIsDirty(false);
+    }
+    
+    hasLoadedInitialData.current = true;
+  }, [flowId, propsInitialNodes, propsInitialEdges, setNodes, setEdges]);
+
+  // Auto-save functionality with faster timing
   const triggerAutoSave = useCallback(() => {
+    // Don't auto-save immediately after loading initial data
+    if (!hasLoadedInitialData.current) {
+      hasLoadedInitialData.current = true;
+      setIsDirty(false);
+      return;
+    }
+
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
@@ -93,13 +90,15 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
       onSave(flowId, nodes, edges);
       setLastSaved(new Date());
       setIsDirty(false);
-    }, 2000); // 2 second delay
+    }, 1000); // Reduced to 1 second for faster saves
   }, [flowId, nodes, edges, onSave]);
 
   // Track changes to nodes/edges
   useEffect(() => {
-    setIsDirty(true);
-    triggerAutoSave();
+    if (hasLoadedInitialData.current) {
+      setIsDirty(true);
+      triggerAutoSave();
+    }
   }, [nodes, edges, triggerAutoSave]);
 
   // Cleanup timeout on unmount
@@ -115,6 +114,37 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  // Handle node deletion
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+    setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    setIsDirty(true);
+  }, [setNodes, setEdges]);
+
+  // Handle node editing
+  const handleNodeEdit = useCallback((nodeId: string, newData: Partial<CustomNodeData>) => {
+    setNodes((nds) => nds.map((node) => 
+      node.id === nodeId 
+        ? { ...node, data: { ...node.data, ...newData } }
+        : node
+    ));
+    setIsDirty(true);
+  }, [setNodes]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        setNodes((nds) => nds.filter((node) => !node.selected));
+        setEdges((eds) => eds.filter((edge) => !edge.selected));
+        setIsDirty(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [setNodes, setEdges]);
 
   const handleFlowNameChange = (newName: string) => {
     setFlowName(newName);
@@ -137,6 +167,21 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
   const [scenarioLens, setScenarioLens] = useState('all');
 
   const { fitView } = useReactFlow();
+
+  // Create node types with delete and edit functionality
+  const nodeTypesWithCallbacks = useMemo(() => ({
+    pill: (props: any) => <PillNode {...props} onDelete={handleDeleteNode} onNodeEdit={handleNodeEdit} />,
+    step: (props: any) => <StepNode {...props} onDelete={handleDeleteNode} onNodeEdit={handleNodeEdit} />,
+    router: (props: any) => <RouterNode {...props} onDelete={handleDeleteNode} onNodeEdit={handleNodeEdit} />,
+  }), [handleDeleteNode, handleNodeEdit]);
+
+  // Create edge types with delete functionality
+  const edgeTypes = useMemo(() => ({
+    default: (props: any) => <CustomEdge {...props} data={{ ...props.data, onDelete: (id: string) => {
+      setEdges((eds) => eds.filter((edge) => edge.id !== id));
+      setIsDirty(true);
+    }}} />,
+  }), [setEdges]);
 
   const handleAutoLayout = () => {
     // Simple auto-layout algorithm: arrange nodes in a hierarchical layout
@@ -175,8 +220,85 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
   };
 
   const handleAddStep = (stepType: string) => {
-    // TODO: Implement add step functionality
-    console.log('Add step:', stepType);
+    const newNode: Node<CustomNodeData> = {
+      id: `${Date.now()}`, // Simple ID generation
+      position: { 
+        x: Math.random() * 400 + 200, // Random position in center area
+        y: Math.random() * 300 + 200 
+      },
+      data: {
+        label: getDefaultLabelForStepType(stepType),
+        category: getCategoryForStepType(stepType),
+        stepType: getDefaultStepTypeForCategory(stepType),
+        description: getDefaultDescriptionForStepType(stepType)
+      },
+      type: getNodeTypeForStepType(stepType)
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+    setIsDirty(true);
+  };
+
+  // Helper functions for step creation
+  const getDefaultLabelForStepType = (stepType: string): string => {
+    switch (stepType) {
+      case 'start': return 'Start';
+      case 'self-service': return 'Self-Service Step';
+      case 'channel': return 'Contact Channel';
+      case 'agent': return 'Agent Step';
+      case 'outcome': return 'Outcome';
+      case 'router': return 'Decision Router';
+      case 'cluster': return 'Process Cluster';
+      default: return 'New Step';
+    }
+  };
+
+  const getCategoryForStepType = (stepType: string): CustomNodeData['category'] => {
+    switch (stepType) {
+      case 'start': return 'start';
+      case 'self-service': return 'self-service';
+      case 'channel': return 'contact-channel';
+      case 'agent': return 'agent';
+      case 'outcome': return 'outcome';
+      case 'router': return 'agent'; // Routers are typically handled by system/agent
+      case 'cluster': return 'self-service'; // Default for clusters
+      default: return 'self-service';
+    }
+  };
+
+  const getDefaultStepTypeForCategory = (stepType: string): CustomNodeData['stepType'] => {
+    switch (stepType) {
+      case 'start': return 'website';
+      case 'self-service': return 'website';
+      case 'channel': return 'phone';
+      case 'agent': return 'greeting';
+      case 'outcome': return 'resolved';
+      case 'router': return 'diagnosis';
+      case 'cluster': return 'website';
+      default: return 'website';
+    }
+  };
+
+  const getDefaultDescriptionForStepType = (stepType: string): string => {
+    switch (stepType) {
+      case 'start': return 'Initial entry point for customer journey';
+      case 'self-service': return 'Customer self-serves through digital channels';
+      case 'channel': return 'Customer contacts through this channel';
+      case 'agent': return 'Agent handles customer interaction';
+      case 'outcome': return 'Process reaches a conclusion';
+      case 'router': return 'Decision point with multiple routing rules';
+      case 'cluster': return 'Group of related process steps';
+      default: return 'Process step description';
+    }
+  };
+
+  const getNodeTypeForStepType = (stepType: string): string => {
+    switch (stepType) {
+      case 'start': return 'pill';
+      case 'outcome': return 'pill';
+      case 'router': return 'router';
+      default: return 'step';
+    }
   };
 
   const formatLastSaved = (date: Date) => {
@@ -253,46 +375,56 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
                     Add Step
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => handleAddStep('start')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                      <span>Start Point</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddStep('self-service')}>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                       <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
                       <span>Self-Service</span>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAddStep('channel')}>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-purple-500 rounded-sm"></div>
-                      <span>Contact Channel</span>
-                    </div>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddStep('agent')}>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-sm"></div>
                       <span>Agent Step</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddStep('outcome')}>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-black rounded-sm"></div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
                       <span>Outcome</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleAddStep('channel')}>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-purple-500 rounded-sm"></div>
+                      <span>Contact Channel</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddStep('router')}>
-                    <Grid3X3 className="h-4 w-4 mr-2" />
-                    Router
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-orange-500 rounded-sm"></div>
+                      <span>Router</span>
+                    </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddStep('cluster')}>
-                    <div className="w-4 h-4 mr-2 border-2 border-gray-400 rounded"></div>
-                    Cluster
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+                      <span>Cluster</span>
+                    </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
             
             <div className="text-sm text-muted-foreground">
-              {isDirty ? 'Unsaved changes' : `Auto-saved ${formatLastSaved(lastSaved || new Date())}`}
+              {isDirty ? 'Unsaved changes' : lastSaved ? `Auto-saved ${formatLastSaved(lastSaved)}` : 'No changes yet'}
             </div>
           </div>
         </div>
@@ -303,6 +435,8 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypesWithCallbacks}
+          edgeTypes={edgeTypes}
           onNodesChange={(changes) => {
             onNodesChange(changes);
             setIsDirty(true);
@@ -312,6 +446,7 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
             setIsDirty(true);
           }}
           onConnect={onConnect}
+          deleteKeyCode={['Backspace', 'Delete']}
           fitView
           className="bg-gray-50"
           attributionPosition="bottom-left"
@@ -373,9 +508,23 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
           {showMiniMap && (
             <MiniMap 
               nodeColor={(node) => {
-                if (node.type === 'input') return '#0277bd';
-                if (node.type === 'output') return '#d32f2f';
-                return '#7b1fa2';
+                if (node.type === 'pill') {
+                  const data = node.data as CustomNodeData;
+                  if (data.category === 'start') return '#22c55e';
+                  if (data.stepType === 'resolved') return '#22c55e';
+                  if (data.stepType === 'abandoned') return '#ef4444';
+                  return '#6b7280';
+                }
+                if (node.type === 'step') {
+                  const data = node.data as CustomNodeData;
+                  if (data.category === 'self-service') return '#3b82f6';
+                  if (data.category === 'contact-channel') return '#8b5cf6';
+                  if (data.category === 'agent') return '#eab308';
+                  if (data.category === 'outcome') return '#ef4444';
+                  return '#6b7280';
+                }
+                if (node.type === 'router') return '#f97316';
+                return '#6b7280';
               }}
               className="bg-white"
             />
