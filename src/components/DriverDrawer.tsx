@@ -1,11 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, ExternalLink, Copy, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import { 
+  X, 
+  Plus, 
+  Copy, 
+  Trash2, 
+  TrendingUp, 
+  TrendingDown, 
+  Phone, 
+  Mail, 
+  MessageCircle, 
+  MoreHorizontal 
+} from "lucide-react";
 import { ContactDriver } from "@/hooks/useContactDrivers";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface DriverDrawerProps {
   driver: ContactDriver | null;
@@ -28,6 +45,8 @@ export function DriverDrawer({
   onSetFlowAsCurrent, 
   onNewFlow 
 }: DriverDrawerProps) {
+  const [showAllDrafts, setShowAllDrafts] = useState(false);
+  
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -48,6 +67,110 @@ export function DriverDrawer({
 
   const currentFlow = driver.flows.find(flow => flow.type === 'current');
   const draftFlows = driver.flows.filter(flow => flow.type === 'draft');
+  const visibleDrafts = showAllDrafts ? draftFlows : draftFlows.slice(0, 3);
+  const hiddenDraftsCount = draftFlows.length - 3;
+
+  // Flow card component with new styling
+  const FlowCard = ({ 
+    flow, 
+    isCurrentFlow = false, 
+    onClick 
+  }: { 
+    flow: any, 
+    isCurrentFlow?: boolean, 
+    onClick: () => void 
+  }) => (
+    <div
+      className={`
+        relative group cursor-pointer rounded-lg transition-all duration-200
+        ${isCurrentFlow ? 'bg-green-50/30' : 'bg-yellow-50/30'}
+        hover:shadow-md hover:-translate-y-0.5
+        focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2
+        border-l-4 ${isCurrentFlow ? 'border-l-green-400' : 'border-l-yellow-400'}
+      `}
+      style={{ 
+        padding: '12px',
+        maxHeight: '96px',
+        minHeight: '96px'
+      }}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open ${flow.name} flow`}
+    >
+      <div className="flex items-start justify-between h-full">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 mb-1">
+            <h4 className="font-semibold text-gray-900 truncate text-base">
+              {flow.name}
+            </h4>
+            <Badge variant="secondary" className="text-xs">
+              {flow.version || 'v 3.4'}
+            </Badge>
+          </div>
+          <p className="text-sm text-gray-700 line-clamp-1 mb-1">
+            {flow.description}
+          </p>
+          <p className="text-xs text-gray-500">
+            Last edited {flow.lastModified}
+          </p>
+        </div>
+        
+        <div className="flex flex-col items-end space-y-1 ml-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                onDuplicateFlow(flow.id);
+              }}>
+                <Copy className="h-3 w-3 mr-2" />
+                Duplicate
+              </DropdownMenuItem>
+              {!isCurrentFlow && (
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteFlow(flow.id);
+                }}>
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {!isCurrentFlow && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSetFlowAsCurrent(flow.id);
+              }}
+              className="text-xs h-6 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+            >
+              Set Live
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -71,14 +194,8 @@ export function DriverDrawer({
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-3 mb-2">
                 <h2 className="text-lg font-bold text-gray-900">{driver.name}</h2>
-                <Badge className={`${
-                  driver.tier === 'Tier 1' 
-                    ? 'bg-blue-100 text-blue-800 border-blue-200' 
-                    : driver.tier === 'Tier 2'
-                    ? 'bg-purple-100 text-purple-800 border-purple-200'
-                    : 'bg-orange-100 text-orange-800 border-orange-200'
-                }`}>
-                  {driver.tier}
+                <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+                  {driver.containmentPercentage}% Contained
                 </Badge>
               </div>
               <p className="text-sm text-gray-600 line-clamp-2">{driver.description}</p>
@@ -96,8 +213,10 @@ export function DriverDrawer({
 
         {/* Scrollable Content */}
         <div className="p-6 space-y-6 overflow-y-auto h-[calc(100vh-120px)]">
-          {/* KPI Chips */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* KPI Section */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">Key Performance Indicators</h3>
+            <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <div className="text-xs text-gray-500 font-medium">Avg Handle Time</div>
@@ -115,7 +234,7 @@ export function DriverDrawer({
             <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <div className="text-xs text-gray-500 font-medium">QA Score</div>
-                <div className="text-lg font-semibold text-gray-900">98%</div>
+                <div className="text-lg font-semibold text-gray-900">{driver.qaScore}%</div>
               </div>
               <TrendingUp className="h-5 w-5 text-green-500" />
             </div>
@@ -126,124 +245,84 @@ export function DriverDrawer({
               </div>
               <TrendingUp className="h-5 w-5 text-blue-500" />
             </div>
+            </div>
           </div>
 
-          {/* Contact Volume List */}
+          {/* Contact Volume Cards */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700">Contact Volume</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Phone</span>
-                <span className="font-medium">{Math.round(driver.volumePerMonth * 0.6).toLocaleString()}</span>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3 flex flex-col items-center text-center">
+                <Phone className="h-4 w-4 text-gray-600 mb-1" />
+                <div className="text-xs text-gray-500 font-medium">Phone</div>
+                <div className="text-sm font-semibold text-gray-900">{driver.phoneVolume.toLocaleString()}</div>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Email</span>
-                <span className="font-medium">{Math.round(driver.volumePerMonth * 0.3).toLocaleString()}</span>
+              <div className="bg-gray-50 rounded-lg p-3 flex flex-col items-center text-center">
+                <Mail className="h-4 w-4 text-gray-600 mb-1" />
+                <div className="text-xs text-gray-500 font-medium">Email</div>
+                <div className="text-sm font-semibold text-gray-900">{driver.emailVolume.toLocaleString()}</div>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Chat</span>
-                <span className="font-medium">{Math.round(driver.volumePerMonth * 0.1).toLocaleString()}</span>
+              <div className="bg-gray-50 rounded-lg p-3 flex flex-col items-center text-center">
+                <MessageCircle className="h-4 w-4 text-gray-600 mb-1" />
+                <div className="text-xs text-gray-500 font-medium">Chat</div>
+                <div className="text-sm font-semibold text-gray-900">{driver.chatVolume.toLocaleString()}</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 flex flex-col items-center text-center">
+                <MessageCircle className="h-4 w-4 text-gray-600 mb-1" />
+                <div className="text-xs text-gray-500 font-medium">Other</div>
+                <div className="text-sm font-semibold text-gray-900">{driver.otherVolume.toLocaleString()}</div>
               </div>
             </div>
           </div>
 
           {/* Current Flow Section */}
           {currentFlow && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-700">Current Flow</h3>
-              <Card className="border-l-4 border-l-green-500 shadow-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-gray-900 truncate">{currentFlow.name}</h4>
-                        <Badge variant="secondary" className="bg-green-50 text-green-800 border-green-200">
-                          {currentFlow.version || 'v 1.0'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">{currentFlow.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">Last modified: {currentFlow.lastModified}</p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      size="sm" 
-                      onClick={() => onOpenFlow(currentFlow.id)}
-                      className="flex items-center space-x-2"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span>Open</span>
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onDuplicateFlow(currentFlow.id)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                      <span>Duplicate</span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="space-y-4">
+              <h3 className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                CURRENT FLOW
+              </h3>
+              <FlowCard 
+                flow={currentFlow} 
+                isCurrentFlow={true}
+                onClick={() => onOpenFlow(currentFlow.id)}
+              />
             </div>
           )}
 
           {/* Drafts Section */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">Drafts ({draftFlows.length})</h3>
-            <div className="space-y-3">
-              {draftFlows.map((flow) => (
-                <Card key={flow.id} className="border-l-4 border-l-blue-500 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h4 className="font-medium text-gray-900 truncate">{flow.name}</h4>
-                          <Badge variant="secondary" className="bg-blue-50 text-blue-800 border-blue-200">
-                            Draft
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 line-clamp-2">{flow.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">Last modified: {flow.lastModified}</p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => onOpenFlow(flow.id)}
-                        className="flex items-center space-x-2"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        <span>Open</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onSetFlowAsCurrent(flow.id)}
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        Set Live
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onDeleteFlow(flow.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+          <div className="space-y-4">
+            <h3 className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+              DRAFTS ({draftFlows.length})
+            </h3>
+            <div className="space-y-4">
+              {visibleDrafts.map((flow) => (
+                <FlowCard 
+                  key={flow.id}
+                  flow={flow} 
+                  isCurrentFlow={false}
+                  onClick={() => onOpenFlow(flow.id)}
+                />
               ))}
+              
+              {/* Draft overflow toggle */}
+              {draftFlows.length > 3 && !showAllDrafts && (
+                <button
+                  onClick={() => setShowAllDrafts(true)}
+                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-center text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                  style={{ minHeight: '64px' }}
+                >
+                  <Plus className="h-4 w-4 mx-auto mb-1" />
+                  Show {hiddenDraftsCount} more draft{hiddenDraftsCount > 1 ? 's' : ''}
+                </button>
+              )}
               
               {/* New Draft Button */}
               <button
                 onClick={() => onNewFlow(driver.id)}
-                className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-center text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                style={{ minHeight: '64px' }}
               >
-                <Plus className="h-5 w-5 mx-auto mb-1" />
+                <Plus className="h-4 w-4 mx-auto mb-1" />
                 New draft
               </button>
             </div>

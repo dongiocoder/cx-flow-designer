@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, LogOut, MoreHorizontal, Trash2, Copy, Share, CreditCard, Building2, Wrench, Upload } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2, Wrench, Upload, Info } from "lucide-react";
 import { useContactDrivers } from "@/hooks/useContactDrivers";
 import { NewContactDriverDialog } from "@/components/NewContactDriverDialog";
 import { DriverDrawer } from "@/components/DriverDrawer";
@@ -18,6 +19,7 @@ export default function Home() {
     contactDrivers,
     selectedDrivers,
     addContactDriver,
+    updateContactDriver,
     deleteContactDriver,
     deleteSelectedDrivers,
     duplicateContactDriver,
@@ -38,13 +40,88 @@ export default function Home() {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
+  const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
 
   const selectedDriver = selectedDriverId ? contactDrivers.find(d => d.id === selectedDriverId) || null : null;
+  const editingDriver = editingDriverId ? contactDrivers.find(d => d.id === editingDriverId) || null : null;
   const currentFlow = currentFlowId ? getFlowById(currentFlowId) : null;
   const currentFlowDriver = currentFlow ? contactDrivers.find(d => d.flows.some(f => f.id === currentFlowId)) : null;
 
-  const handleCreateContactDriver = (driverData: { name: string; description: string; tier: 'Tier 1' | 'Tier 2' | 'Tier 3' }) => {
-    addContactDriver(driverData);
+  const handleCreateContactDriver = (driverData: { 
+    name: string; 
+    description: string;
+    kpis?: {
+      avgHandleTime?: number;
+      csat?: number;
+      qaScore?: number;
+      volumePerMonth?: number;
+      containmentPercentage?: number;
+      containmentVolume?: number;
+    };
+    volumes?: {
+      phoneVolume?: number;
+      emailVolume?: number;
+      chatVolume?: number;
+      otherVolume?: number;
+    };
+  }) => {
+    // Extract KPIs and volumes, merge with driver data
+    const { kpis, volumes, ...basicData } = driverData;
+    const driverWithData = {
+      ...basicData,
+      avgHandleTime: kpis?.avgHandleTime || 0,
+      csat: kpis?.csat || 0,
+      qaScore: kpis?.qaScore || 0,
+      volumePerMonth: kpis?.volumePerMonth || 0,
+      containmentPercentage: kpis?.containmentPercentage || 0,
+      containmentVolume: kpis?.containmentVolume || 0,
+      phoneVolume: volumes?.phoneVolume || 0,
+      emailVolume: volumes?.emailVolume || 0,
+      chatVolume: volumes?.chatVolume || 0,
+      otherVolume: volumes?.otherVolume || 0
+    };
+    addContactDriver(driverWithData);
+  };
+
+  const handleUpdateContactDriver = (id: string, driverData: { 
+    name: string; 
+    description: string;
+    kpis?: {
+      avgHandleTime?: number;
+      csat?: number;
+      qaScore?: number;
+      volumePerMonth?: number;
+      containmentPercentage?: number;
+      containmentVolume?: number;
+    };
+    volumes?: {
+      phoneVolume?: number;
+      emailVolume?: number;
+      chatVolume?: number;
+      otherVolume?: number;
+    };
+  }) => {
+    // Extract KPIs and volumes, merge with driver data
+    const { kpis, volumes, ...basicData } = driverData;
+    const updatedData = {
+      ...basicData,
+      avgHandleTime: kpis?.avgHandleTime || 0,
+      csat: kpis?.csat || 0,
+      qaScore: kpis?.qaScore || 0,
+      volumePerMonth: kpis?.volumePerMonth || 0,
+      containmentPercentage: kpis?.containmentPercentage || 0,
+      containmentVolume: kpis?.containmentVolume || 0,
+      phoneVolume: volumes?.phoneVolume || 0,
+      emailVolume: volumes?.emailVolume || 0,
+      chatVolume: volumes?.chatVolume || 0,
+      otherVolume: volumes?.otherVolume || 0
+    };
+    updateContactDriver(id, updatedData);
+    setEditingDriverId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDriverId(null);
   };
 
   const handleDeleteDriver = (id: string) => {
@@ -53,6 +130,10 @@ export default function Home() {
 
   const handleDuplicateDriver = (id: string) => {
     duplicateContactDriver(id);
+  };
+
+  const handleEditDriver = (id: string) => {
+    setEditingDriverId(id);
   };
 
   const handleBulkDelete = () => {
@@ -240,7 +321,12 @@ export default function Home() {
                     <Upload className="mr-2 h-4 w-4" />
                     Import data
                   </Button>
-                  <NewContactDriverDialog onCreateContactDriver={handleCreateContactDriver} />
+                  <NewContactDriverDialog 
+                    onCreateContactDriver={handleCreateContactDriver}
+                    onUpdateContactDriver={handleUpdateContactDriver}
+                    editingDriver={editingDriver}
+                    onCancelEdit={handleCancelEdit}
+                  />
                 </div>
               </div>
 
@@ -264,8 +350,22 @@ export default function Home() {
                           <span>Name</span>
                         </div>
                       </div>
-                      <div className="col-span-1">Tier</div>
-                      <div className="col-span-1">Volume / month</div>
+                      <div className="col-span-1 flex items-center space-x-1">
+                        <span>Containment</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="text-xs">
+                              <div className="font-medium">AI Containment Rate</div>
+                              <div>Percentage of cases resolved by AI</div>
+                              <div>without human intervention</div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                                              <div className="col-span-1">Volume</div>
                       <div className="col-span-1">Avg Handle Time</div>
                       <div className="col-span-1">CSAT</div>
                       <div className="col-span-1">Current Flow</div>
@@ -313,15 +413,22 @@ export default function Home() {
                               </div>
                             </div>
                             <div className="col-span-1">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                driver.tier === 'Tier 1' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : driver.tier === 'Tier 2'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-orange-100 text-orange-800'
-                              }`}>
-                                {driver.tier}
-                              </span>
+                              <div className="flex items-center space-x-1">
+                                <span className="text-sm font-medium">{driver.containmentPercentage}%</span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="text-xs">
+                                      <div className="font-medium">Containment Details</div>
+                                      <div>Rate: {driver.containmentPercentage}%</div>
+                                      <div>Volume: {driver.containmentVolume.toLocaleString()} cases</div>
+                                      <div>Total: {driver.volumePerMonth.toLocaleString()} cases</div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
                             </div>
                             <div className="col-span-1">
                               <div className="text-sm">{driver.volumePerMonth.toLocaleString()}</div>
@@ -343,7 +450,7 @@ export default function Home() {
                             </div>
                             <div className="col-span-1">
                               {draftsCount > 0 ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
+                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-50 text-yellow-800 border border-yellow-200">
                                   +{draftsCount}
                                 </span>
                               ) : (
@@ -362,16 +469,25 @@ export default function Home() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleDuplicateDriver(driver.id)}>
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditDriver(driver.id);
+                                  }}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDuplicateDriver(driver.id);
+                                  }}>
                                     <Copy className="mr-2 h-4 w-4" />
                                     Duplicate
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Share className="mr-2 h-4 w-4" />
-                                    Share
-                                  </DropdownMenuItem>
                                   <DropdownMenuItem 
-                                    onClick={() => handleDeleteDriver(driver.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteDriver(driver.id);
+                                    }}
                                     className="text-red-600"
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />

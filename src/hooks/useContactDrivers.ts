@@ -22,10 +22,17 @@ interface LegacyDriver {
   name: string;
   description: string;
   lastModified: string;
-  tier: 'Tier 1' | 'Tier 2' | 'Tier 3';
+  tier?: 'Tier 1' | 'Tier 2' | 'Tier 3';
+  containmentPercentage?: number;
+  containmentVolume?: number;
   volumePerMonth?: number;
   avgHandleTime?: number;
   csat?: number;
+  qaScore?: number;
+  phoneVolume?: number;
+  emailVolume?: number;
+  chatVolume?: number;
+  otherVolume?: number;
   flows?: LegacyFlow[];
   createdAt: string;
 }
@@ -46,10 +53,17 @@ export interface ContactDriver {
   name: string;
   description: string;
   lastModified: string;
-  tier: 'Tier 1' | 'Tier 2' | 'Tier 3';
+  containmentPercentage: number; // percentage of cases AI contained
+  containmentVolume: number; // actual volume of cases AI contained
   volumePerMonth: number;
   avgHandleTime: number; // in minutes
   csat: number; // percentage
+  qaScore: number; // percentage
+  // Contact volume breakdown
+  phoneVolume: number;
+  emailVolume: number;
+  chatVolume: number;
+  otherVolume: number;
   flows: Flow[];
   createdAt: string;
 }
@@ -63,10 +77,16 @@ const initialContactDrivers: ContactDriver[] = [
     name: "Account Access Issues",
     description: "Customer cannot access their account due to login problems",
     lastModified: new Date().toISOString().split('T')[0],
-    tier: "Tier 1",
+    containmentPercentage: 78,
+    containmentVolume: 975,
     volumePerMonth: 1250,
     avgHandleTime: 8.5,
     csat: 92,
+    qaScore: 98,
+    phoneVolume: 750,
+    emailVolume: 375,
+    chatVolume: 125,
+    otherVolume: 0,
     flows: [
       {
         id: '1-1',
@@ -101,10 +121,16 @@ const initialContactDrivers: ContactDriver[] = [
     name: "Product Purchase Inquiry",
     description: "Customer wants information about products before purchasing",
     lastModified: new Date().toISOString().split('T')[0],
-    tier: "Tier 2",
+    containmentPercentage: 65,
+    containmentVolume: 579,
     volumePerMonth: 890,
     avgHandleTime: 12.3,
     csat: 88,
+    qaScore: 95,
+    phoneVolume: 534,
+    emailVolume: 267,
+    chatVolume: 89,
+    otherVolume: 0,
     flows: [
       {
         id: '2-1',
@@ -123,10 +149,16 @@ const initialContactDrivers: ContactDriver[] = [
     name: "Return and Refund Request",
     description: "Customer wants to return a product and get a refund",
     lastModified: new Date().toISOString().split('T')[0],
-    tier: "Tier 3",
+    containmentPercentage: 45,
+    containmentVolume: 153,
     volumePerMonth: 340,
     avgHandleTime: 15.8,
     csat: 78,
+    qaScore: 92,
+    phoneVolume: 204,
+    emailVolume: 102,
+    chatVolume: 34,
+    otherVolume: 0,
     flows: [
       {
         id: '3-1',
@@ -160,17 +192,29 @@ export function useContactDrivers() {
     if (savedDrivers) {
       const parsedDrivers = JSON.parse(savedDrivers);
       // Migrate existing data to include new fields
-      const migratedDrivers = parsedDrivers.map((driver: LegacyDriver) => ({
-        ...driver,
-        volumePerMonth: driver.volumePerMonth || 0,
-        avgHandleTime: driver.avgHandleTime || 0,
-        csat: driver.csat || 0,
-        flows: driver.flows ? driver.flows.map((flow: LegacyFlow) => ({
-          ...flow,
-          type: flow.type === 'future' ? 'draft' : flow.type,
-          version: flow.version || (flow.type === 'current' ? 'v 1.0' : undefined)
-        })) : []
-      }));
+      const migratedDrivers = parsedDrivers.map((driver: LegacyDriver) => {
+        // Remove tier and add containment fields if missing
+        const { tier, ...driverWithoutTier } = driver;
+        const volume = driver.volumePerMonth || 0;
+        return {
+          ...driverWithoutTier,
+          volumePerMonth: volume,
+          avgHandleTime: driver.avgHandleTime || 0,
+          csat: driver.csat || 0,
+          qaScore: driver.qaScore || 98,
+          containmentPercentage: driver.containmentPercentage || 60, // Default containment
+          containmentVolume: driver.containmentVolume || Math.round(volume * 0.6),
+          phoneVolume: driver.phoneVolume || Math.round(volume * 0.6),
+          emailVolume: driver.emailVolume || Math.round(volume * 0.3),
+          chatVolume: driver.chatVolume || Math.round(volume * 0.1),
+          otherVolume: driver.otherVolume || 0,
+          flows: driver.flows ? driver.flows.map((flow: LegacyFlow) => ({
+            ...flow,
+            type: flow.type === 'future' ? 'draft' : flow.type,
+            version: flow.version || (flow.type === 'current' ? 'v 1.0' : undefined)
+          })) : []
+        };
+      });
       setContactDrivers(migratedDrivers);
     } else {
       // If no saved drivers, use initial data
@@ -186,14 +230,11 @@ export function useContactDrivers() {
     }
   }, [contactDrivers]);
 
-  const addContactDriver = (driverData: Omit<ContactDriver, 'id' | 'createdAt' | 'lastModified' | 'flows' | 'volumePerMonth' | 'avgHandleTime' | 'csat'>) => {
+  const addContactDriver = (driverData: Omit<ContactDriver, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
     const newDriver: ContactDriver = {
       id: Date.now().toString(),
       ...driverData,
       flows: [],
-      volumePerMonth: 0,
-      avgHandleTime: 0,
-      csat: 0,
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString().split('T')[0]
     };
@@ -268,15 +309,26 @@ export function useContactDrivers() {
   };
 
   const setFlowAsCurrent = (flowId: string) => {
-    setContactDrivers(prev => prev.map(driver => ({
-      ...driver,
-      flows: driver.flows.map(flow => ({
-        ...flow,
-        type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
-        version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version
-      })),
-      lastModified: new Date().toISOString().split('T')[0]
-    })));
+    setContactDrivers(prev => prev.map(driver => {
+      // Only update flows if this driver contains the target flow
+      const hasTargetFlow = driver.flows.some(flow => flow.id === flowId);
+      
+      if (!hasTargetFlow) {
+        // This driver doesn't contain the target flow, leave it unchanged
+        return driver;
+      }
+
+      // This driver contains the target flow, update its flows
+      return {
+        ...driver,
+        flows: driver.flows.map(flow => ({
+          ...flow,
+          type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
+          version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version
+        })),
+        lastModified: new Date().toISOString().split('T')[0]
+      };
+    }));
   };
 
   const duplicateFlow = (flowId: string) => {
