@@ -223,9 +223,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full bg-background flex flex-col">
       {/* Global Header - Never changes */}
-      <header className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <header className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/80 flex-shrink-0">
         <div className="flex h-16 items-center justify-between px-6">
           {/* Left side - Logo */}
           <div className="flex items-center space-x-2">
@@ -273,12 +273,12 @@ export default function Home() {
       </header>
 
       {/* Main Content Area - Swaps between modes */}
-      <main className={`flex-1 h-[calc(100vh-64px)] transition-opacity duration-300 ${
+      <main className={`flex-1 transition-opacity duration-300 ${
         isDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
       }`}>
         {pageMode === 'table' ? (
           // Contact-Driver Table Mode
-          <div className="p-6 h-full overflow-auto">
+          <div className="p-6 flex-1 overflow-auto">
             <div className="space-y-6">
               {/* Bulk Action Bar - Only show when drivers are selected */}
               {selectedDrivers.length > 0 && (
@@ -522,7 +522,7 @@ export default function Home() {
               storageStatus={storageStatus}
             />
           ) : (
-            <div className="h-full bg-gray-50 flex items-center justify-center">
+            <div className="flex-1 bg-gray-50 flex items-center justify-center">
               <div className="text-center">
                 <h3 className="text-lg font-medium text-gray-900">Flow Not Found</h3>
                 <p className="text-sm text-gray-500">The requested flow could not be found.</p>
