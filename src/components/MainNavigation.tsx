@@ -104,8 +104,10 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
   return (
     <div className="w-16 h-full bg-white border-r border-gray-200 flex flex-col">
       {/* Empty logo area - properly aligned with header */}
-      <div className="h-16 border-b bg-white">
-        {/* Empty space reserved for future logo */}
+      <div className="border-b bg-white flex-shrink-0">
+        <div className="h-16">
+          {/* Empty space reserved for future logo */}
+        </div>
       </div>
 
       {/* Navigation Items - Moved down */}
