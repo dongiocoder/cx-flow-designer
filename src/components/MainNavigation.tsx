@@ -17,7 +17,6 @@ import {
   Plug,
   Zap
 } from "lucide-react";
-import Image from "next/image";
 
 interface NavigationItem {
   id: string;
@@ -104,16 +103,9 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
 
   return (
     <div className="w-16 h-full bg-white border-r border-gray-200 flex flex-col">
-      {/* Company Logo at Top */}
-      <div className="h-16 flex items-center justify-center border-b border-gray-200 bg-gray-50">
-        <div className="w-8 h-8 relative">
-          <Image
-            src="/xo-logo.svg"
-            alt="XO Logo"
-            fill
-            className="object-contain"
-          />
-        </div>
+      {/* Empty logo area - properly aligned with header */}
+      <div className="h-16 border-b bg-white">
+        {/* Empty space reserved for future logo */}
       </div>
 
       {/* Navigation Items - Moved down */}
