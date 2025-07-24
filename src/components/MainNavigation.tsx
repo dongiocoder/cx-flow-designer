@@ -11,8 +11,13 @@ import {
   MessageSquare, 
   FileText,
   HelpCircle,
-  Plus
+  Plus,
+  Table,
+  Layers,
+  Plug,
+  Zap
 } from "lucide-react";
+import Image from "next/image";
 
 interface NavigationItem {
   id: string;
@@ -28,13 +33,19 @@ interface MainNavigationProps {
 export function MainNavigation({ onNavigate }: MainNavigationProps) {
   const [activeItem, setActiveItem] = useState<string>("dashboard");
 
-  // Placeholder navigation items - we'll customize these in the next step
+  // Updated navigation items with your requested changes
   const navigationItems: NavigationItem[] = [
     {
       id: "dashboard",
       label: "Dashboard",
       icon: <Home className="h-5 w-5" />,
       isActive: activeItem === "dashboard"
+    },
+    {
+      id: "contact-drivers",
+      label: "Contact Drivers",
+      icon: <Table className="h-5 w-5" />,
+      isActive: activeItem === "contact-drivers"
     },
     {
       id: "flows",
@@ -55,10 +66,28 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       isActive: activeItem === "users"
     },
     {
-      id: "documents",
-      label: "Documents",
+      id: "knowledge-bases",
+      label: "Knowledge Bases",
       icon: <FileText className="h-5 w-5" />,
-      isActive: activeItem === "documents"
+      isActive: activeItem === "knowledge-bases"
+    },
+    {
+      id: "channels",
+      label: "Channels",
+      icon: <Layers className="h-5 w-5" />,
+      isActive: activeItem === "channels"
+    },
+    {
+      id: "integrations",
+      label: "Integrations",
+      icon: <Plug className="h-5 w-5" />,
+      isActive: activeItem === "integrations"
+    },
+    {
+      id: "actions",
+      label: "Actions",
+      icon: <Zap className="h-5 w-5" />,
+      isActive: activeItem === "actions"
     },
     {
       id: "settings",
@@ -75,7 +104,19 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
 
   return (
     <div className="w-16 h-full bg-white border-r border-gray-200 flex flex-col">
-      {/* Navigation Items */}
+      {/* Company Logo at Top */}
+      <div className="h-16 flex items-center justify-center border-b border-gray-200 bg-gray-50">
+        <div className="w-8 h-8 relative">
+          <Image
+            src="/xo-logo.svg"
+            alt="XO Logo"
+            fill
+            className="object-contain"
+          />
+        </div>
+      </div>
+
+      {/* Navigation Items - Moved down */}
       <nav className="flex-1 px-2 py-4 space-y-2">
         {navigationItems.map((item) => (
           <Tooltip key={item.id}>
