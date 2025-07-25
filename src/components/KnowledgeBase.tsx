@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { MoreHorizontal, Trash2, Copy, Upload, Plus } from "lucide-react";
+import { MoreHorizontal, Trash2, Copy, Upload } from "lucide-react";
+import { NewKnowledgeBaseAssetDialog } from "@/components/NewKnowledgeBaseAssetDialog";
 
 // Knowledge base asset types
 const KNOWLEDGE_BASE_TYPES = [
@@ -160,15 +161,13 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
               <Upload className="mr-2 h-4 w-4" />
               Import data
             </Button>
-            {/* New Knowledge Base Asset Button - Black */}
-            <Button 
-              onClick={onCreateAsset}
-              className="bg-black text-white hover:bg-gray-800"
-              size="sm"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Knowledge Base Asset
-            </Button>
+            {/* New Knowledge Base Asset Dialog */}
+            <NewKnowledgeBaseAssetDialog 
+              onCreateAsset={(assetData) => {
+                console.log('Creating knowledge base asset:', assetData);
+                onCreateAsset?.();
+              }}
+            />
           </div>
         </div>
 
