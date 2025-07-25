@@ -11,7 +11,7 @@ import { DriverDrawer } from "@/components/DriverDrawer";
 import { FlowEditor } from "@/components/FlowEditor";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { KnowledgeBaseEditor } from "@/components/KnowledgeBaseEditor";
-import { useKnowledgeBaseAssets } from "@/hooks/useKnowledgeBaseAssets";
+import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
 import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
 
@@ -54,12 +54,13 @@ export default function Home() {
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [currentAssetId, setCurrentAssetId] = useState<string | null>(null);
+  const [currentAssetData, setCurrentAssetData] = useState<KnowledgeBaseAsset | null>(null);
 
   const selectedDriver = selectedDriverId ? contactDrivers.find(d => d.id === selectedDriverId) || null : null;
   const editingDriver = editingDriverId ? contactDrivers.find(d => d.id === editingDriverId) || null : null;
   const currentFlow = currentFlowId ? getFlowById(currentFlowId) : null;
   const currentFlowDriver = currentFlow ? contactDrivers.find(d => d.flows.some(f => f.id === currentFlowId)) : null;
-  const currentAsset = currentAssetId ? getAssetById(currentAssetId) : null;
+  const currentAsset = currentAssetData || (currentAssetId ? getAssetById(currentAssetId) : null);
 
   // Listen for navigation changes from MainNavigation component
   useEffect(() => {
@@ -196,21 +197,25 @@ export default function Home() {
     setSelectedDriverId(null);
     setCurrentFlowId(null);
     setCurrentAssetId(null);
+    setCurrentAssetData(null);
   };
 
-  const handleCreateKnowledgeBaseAsset = (assetId: string) => {
-    setCurrentAssetId(assetId);
+  const handleCreateKnowledgeBaseAsset = (asset: KnowledgeBaseAsset) => {
+    setCurrentAssetId(asset.id);
+    setCurrentAssetData(asset);
     setPageMode('knowledge-editor');
   };
 
   const handleEditKnowledgeBaseAsset = (assetId: string) => {
     setCurrentAssetId(assetId);
+    setCurrentAssetData(null); // Clear direct data, will use lookup for existing assets
     setPageMode('knowledge-editor');
   };
 
   const handleKnowledgeBaseEditorBack = () => {
     setPageMode('table');
     setCurrentAssetId(null);
+    setCurrentAssetData(null);
   };
 
   const handleSaveKnowledgeBaseAsset = (assetId: string, updates: Partial<any>) => {

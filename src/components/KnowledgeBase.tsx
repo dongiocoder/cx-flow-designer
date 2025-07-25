@@ -7,10 +7,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MoreHorizontal, Trash2, Copy, Upload } from "lucide-react";
 import { NewKnowledgeBaseAssetDialog } from "@/components/NewKnowledgeBaseAssetDialog";
-import { useKnowledgeBaseAssets } from "@/hooks/useKnowledgeBaseAssets";
+import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
 
 interface KnowledgeBaseProps {
-  onCreateAsset?: (assetId: string) => void;
+  onCreateAsset?: (asset: KnowledgeBaseAsset) => void;
   onEditAsset?: (assetId: string) => void;
 }
 
@@ -65,7 +65,7 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
     isInternal: boolean;
   }) => {
     const newAsset = addKnowledgeBaseAsset(assetData);
-    onCreateAsset?.(newAsset.id);
+    onCreateAsset?.(newAsset);
   };
 
   if (isLoading) {
