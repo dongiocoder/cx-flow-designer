@@ -44,7 +44,8 @@ export default function Home() {
 
   const {
     getAssetById,
-    updateKnowledgeBaseAsset
+    updateKnowledgeBaseAsset,
+    storageStatus: kbStorageStatus
   } = useKnowledgeBaseAssets();
 
   const [pageMode, setPageMode] = useState<PageMode>('table');
@@ -621,6 +622,7 @@ export default function Home() {
               asset={currentAsset}
               onBack={handleKnowledgeBaseEditorBack}
               onSave={handleSaveKnowledgeBaseAsset}
+              storageStatus={kbStorageStatus}
             />
           ) : (
             <div className="flex-1 bg-gray-50 flex items-center justify-center">

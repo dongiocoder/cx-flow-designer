@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 // Knowledge base asset types
 const KNOWLEDGE_BASE_TYPES = [
@@ -31,9 +31,10 @@ interface KnowledgeBaseEditorProps {
   asset: KnowledgeBaseAsset;
   onBack: () => void;
   onSave: (assetId: string, updates: Partial<KnowledgeBaseAsset>) => void;
+  storageStatus?: 'github' | 'localStorage' | 'none';
 }
 
-export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEditorProps) {
+export function KnowledgeBaseEditor({ asset, onBack, onSave, storageStatus = 'localStorage' }: KnowledgeBaseEditorProps) {
   const [assetName, setAssetName] = useState(asset.name);
   const [content, setContent] = useState(asset.content || '');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -47,7 +48,8 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEdit
   useEffect(() => {
     setAssetName(asset.name);
     setContent(asset.content || '');
-    setLastSaved(asset.lastModified ? new Date(asset.lastModified) : null);
+    // Only set lastSaved to null initially, will be set when auto-save happens
+    setLastSaved(null);
     setIsDirty(false);
     hasLoadedInitialData.current = true;
   }, [asset]);
@@ -63,6 +65,7 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEdit
     }
     
     autoSaveTimeoutRef.current = setTimeout(() => {
+      console.log('Auto-saving knowledge base asset:', asset.id);
       onSave(asset.id, {
         name: assetName,
         content: content,
@@ -76,6 +79,7 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEdit
   // Track changes to content and name
   useEffect(() => {
     if (hasLoadedInitialData.current && (content !== asset.content || assetName !== asset.name)) {
+      console.log('Knowledge base content changed, triggering auto-save...');
       setIsDirty(true);
       triggerAutoSave();
     }
@@ -106,19 +110,7 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEdit
     setContent(newContent);
   };
 
-  const handleManualSave = () => {
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    
-    onSave(asset.id, {
-      name: assetName,
-      content: content,
-      lastModified: new Date().toISOString()
-    });
-    setLastSaved(new Date());
-    setIsDirty(false);
-  };
+
 
   const formatLastSaved = (date: Date) => {
     const now = new Date();
@@ -204,20 +196,22 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEdit
             </div>
           </div>
           
-          {/* Right side - Actions and status */}
+          {/* Right side - Auto-save status and storage indicator */}
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleManualSave}
-              disabled={!isDirty}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-            
             <div className="text-sm text-muted-foreground">
               {isDirty ? 'Unsaved changes' : lastSaved ? `Auto-saved ${formatLastSaved(lastSaved)}` : 'No changes yet'}
+            </div>
+            
+            {/* Storage status indicator */}
+            <div className="text-xs text-muted-foreground flex items-center space-x-1">
+              <div className={`w-2 h-2 rounded-full ${
+                storageStatus === 'github' ? 'bg-green-500' : 
+                storageStatus === 'localStorage' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <span>
+                {storageStatus === 'github' ? 'GitHub' : 
+                 storageStatus === 'localStorage' ? 'Local' : 'Offline'}
+              </span>
             </div>
           </div>
         </div>
