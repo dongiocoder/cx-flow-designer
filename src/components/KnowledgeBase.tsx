@@ -7,63 +7,29 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MoreHorizontal, Trash2, Copy, Upload } from "lucide-react";
 import { NewKnowledgeBaseAssetDialog } from "@/components/NewKnowledgeBaseAssetDialog";
-
-// Knowledge base asset types
-const KNOWLEDGE_BASE_TYPES = [
-  'Article',
-  'Macro', 
-  'Token Point',
-  'SOP',
-  'Product Description Sheet',
-  'PDF Material'
-] as const;
-
-type KnowledgeBaseType = typeof KNOWLEDGE_BASE_TYPES[number];
-
-interface KnowledgeBaseAsset {
-  id: string;
-  name: string;
-  type: KnowledgeBaseType;
-  dateCreated: string;
-  lastModified: string;
-  isInternal: boolean;
-}
+import { useKnowledgeBaseAssets } from "@/hooks/useKnowledgeBaseAssets";
 
 interface KnowledgeBaseProps {
-  onCreateAsset?: () => void;
+  onCreateAsset?: (assetId: string) => void;
   onEditAsset?: (assetId: string) => void;
 }
 
 export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps) {
-  // Sample data - this will be replaced with actual data management
-  const [knowledgeBaseAssets] = useState<KnowledgeBaseAsset[]>([
-    {
-      id: '1',
-      name: 'Customer Support FAQ',
-      type: 'Article',
-      dateCreated: '2024-01-15',
-      lastModified: '2024-01-20',
-      isInternal: false
-    },
-    {
-      id: '2', 
-      name: 'Password Reset Macro',
-      type: 'Macro',
-      dateCreated: '2024-01-10',
-      lastModified: '2024-01-18',
-      isInternal: true
-    },
-    {
-      id: '3',
-      name: 'Product Return SOP',
-      type: 'SOP', 
-      dateCreated: '2024-01-05',
-      lastModified: '2024-01-15',
-      isInternal: true
-    }
-  ]);
-
-  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const {
+    knowledgeBaseAssets,
+    selectedAssets,
+    isLoading,
+    addKnowledgeBaseAsset,
+    updateKnowledgeBaseAsset,
+    deleteKnowledgeBaseAsset,
+    deleteSelectedAssets,
+    duplicateKnowledgeBaseAsset,
+    toggleAssetSelection,
+    selectAllAssets,
+    clearSelection,
+    isAllSelected,
+    isPartiallySelected
+  } = useKnowledgeBaseAssets();
 
   const handleAssetRowClick = (assetId: string) => {
     // Disable row click if any checkboxes are selected
@@ -73,24 +39,8 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
     onEditAsset?.(assetId);
   };
 
-  const toggleAssetSelection = (assetId: string) => {
-    setSelectedAssets(prev => 
-      prev.includes(assetId) 
-        ? prev.filter(id => id !== assetId)
-        : [...prev, assetId]
-    );
-  };
-
-  const selectAllAssets = () => {
-    setSelectedAssets(knowledgeBaseAssets.map(asset => asset.id));
-  };
-
-  const clearSelection = () => {
-    setSelectedAssets([]);
-  };
-
   const handleMasterCheckboxChange = () => {
-    if (selectedAssets.length === knowledgeBaseAssets.length) {
+    if (isAllSelected) {
       clearSelection();
     } else {
       selectAllAssets();
@@ -98,22 +48,36 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
   };
 
   const handleDuplicateAsset = (assetId: string) => {
-    console.log('Duplicating asset:', assetId);
-    // TODO: Implement duplicate functionality
+    duplicateKnowledgeBaseAsset(assetId);
   };
 
   const handleDeleteAsset = (assetId: string) => {
-    console.log('Deleting asset:', assetId);
-    // TODO: Implement delete functionality
+    deleteKnowledgeBaseAsset(assetId);
   };
 
   const handleBulkDelete = () => {
-    console.log('Bulk deleting assets:', selectedAssets);
-    // TODO: Implement bulk delete functionality
+    deleteSelectedAssets();
   };
 
-  const isAllSelected = selectedAssets.length === knowledgeBaseAssets.length && knowledgeBaseAssets.length > 0;
-  const isPartiallySelected = selectedAssets.length > 0 && selectedAssets.length < knowledgeBaseAssets.length;
+  const handleCreateAsset = (assetData: {
+    name: string;
+    type: any;
+    isInternal: boolean;
+  }) => {
+    const newAsset = addKnowledgeBaseAsset(assetData);
+    onCreateAsset?.(newAsset.id);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex-1 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading knowledge base assets...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 flex-1 overflow-auto">
@@ -163,10 +127,7 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
             </Button>
             {/* New Knowledge Base Asset Dialog */}
             <NewKnowledgeBaseAssetDialog 
-              onCreateAsset={(assetData) => {
-                console.log('Creating knowledge base asset:', assetData);
-                onCreateAsset?.();
-              }}
+              onCreateAsset={handleCreateAsset}
             />
           </div>
         </div>

@@ -10,10 +10,12 @@ import { NewContactDriverDialog } from "@/components/NewContactDriverDialog";
 import { DriverDrawer } from "@/components/DriverDrawer";
 import { FlowEditor } from "@/components/FlowEditor";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
+import { KnowledgeBaseEditor } from "@/components/KnowledgeBaseEditor";
+import { useKnowledgeBaseAssets } from "@/hooks/useKnowledgeBaseAssets";
 import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
 
-type PageMode = 'table' | 'flow-editor';
+type PageMode = 'table' | 'flow-editor' | 'knowledge-editor';
 type PageSection = 'contact-drivers' | 'knowledge-bases' | 'dashboard' | 'analytics' | 'users' | 'channels' | 'integrations' | 'actions' | 'settings';
 
 export default function Home() {
@@ -40,17 +42,24 @@ export default function Home() {
     isPartiallySelected
   } = useContactDrivers();
 
+  const {
+    getAssetById,
+    updateKnowledgeBaseAsset
+  } = useKnowledgeBaseAssets();
+
   const [pageMode, setPageMode] = useState<PageMode>('table');
   const [currentSection, setCurrentSection] = useState<PageSection>('contact-drivers');
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
+  const [currentAssetId, setCurrentAssetId] = useState<string | null>(null);
 
   const selectedDriver = selectedDriverId ? contactDrivers.find(d => d.id === selectedDriverId) || null : null;
   const editingDriver = editingDriverId ? contactDrivers.find(d => d.id === editingDriverId) || null : null;
   const currentFlow = currentFlowId ? getFlowById(currentFlowId) : null;
   const currentFlowDriver = currentFlow ? contactDrivers.find(d => d.flows.some(f => f.id === currentFlowId)) : null;
+  const currentAsset = currentAssetId ? getAssetById(currentAssetId) : null;
 
   // Listen for navigation changes from MainNavigation component
   useEffect(() => {
@@ -186,16 +195,26 @@ export default function Home() {
     setIsDrawerOpen(false);
     setSelectedDriverId(null);
     setCurrentFlowId(null);
+    setCurrentAssetId(null);
   };
 
-  const handleCreateKnowledgeBaseAsset = () => {
-    console.log('Creating new knowledge base asset');
-    // TODO: Implement create knowledge base asset dialog
+  const handleCreateKnowledgeBaseAsset = (assetId: string) => {
+    setCurrentAssetId(assetId);
+    setPageMode('knowledge-editor');
   };
 
   const handleEditKnowledgeBaseAsset = (assetId: string) => {
-    console.log('Editing knowledge base asset:', assetId);
-    // TODO: Implement text editor interface
+    setCurrentAssetId(assetId);
+    setPageMode('knowledge-editor');
+  };
+
+  const handleKnowledgeBaseEditorBack = () => {
+    setPageMode('table');
+    setCurrentAssetId(null);
+  };
+
+  const handleSaveKnowledgeBaseAsset = (assetId: string, updates: Partial<any>) => {
+    updateKnowledgeBaseAsset(assetId, updates);
   };
 
   const handleMenuItemClick = (item: string) => {
@@ -562,7 +581,7 @@ export default function Home() {
               </div>
             </div>
           )
-        ) : (
+        ) : pageMode === 'flow-editor' ? (
           // Flow Editor Mode
           currentFlow && currentFlowDriver ? (
             <FlowEditor
@@ -586,6 +605,28 @@ export default function Home() {
                   className="mt-4"
                 >
                   Back to Drivers
+                </Button>
+              </div>
+            </div>
+          )
+        ) : (
+          // Knowledge Base Editor Mode
+          currentAsset ? (
+            <KnowledgeBaseEditor
+              asset={currentAsset}
+              onBack={handleKnowledgeBaseEditorBack}
+              onSave={handleSaveKnowledgeBaseAsset}
+            />
+          ) : (
+            <div className="flex-1 bg-gray-50 flex items-center justify-center">
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900">Asset Not Found</h3>
+                <p className="text-sm text-gray-500">The requested knowledge base asset could not be found.</p>
+                <Button 
+                  onClick={() => setPageMode('table')} 
+                  className="mt-4"
+                >
+                  Back to Knowledge Base
                 </Button>
               </div>
             </div>
