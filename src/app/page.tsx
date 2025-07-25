@@ -220,7 +220,7 @@ export default function Home() {
     setCurrentAssetData(null);
   };
 
-  const handleSaveKnowledgeBaseAsset = (assetId: string, updates: Partial<any>) => {
+  const handleSaveKnowledgeBaseAsset = (assetId: string, updates: Partial<KnowledgeBaseAsset>) => {
     updateKnowledgeBaseAsset(assetId, updates);
   };
 

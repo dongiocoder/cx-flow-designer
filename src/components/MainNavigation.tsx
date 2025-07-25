@@ -8,7 +8,6 @@ import {
   Settings, 
   BarChart3, 
   Users, 
-  MessageSquare, 
   FileText,
   HelpCircle,
   Plus,

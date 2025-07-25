@@ -4,16 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
-
-// Knowledge base asset types
-const KNOWLEDGE_BASE_TYPES = [
-  'Article',
-  'Macro', 
-  'Token Point',
-  'SOP',
-  'Product Description Sheet',
-  'PDF Material'
-] as const;
+import { KNOWLEDGE_BASE_TYPES } from "@/hooks/useKnowledgeBaseAssets";
 
 type KnowledgeBaseType = typeof KNOWLEDGE_BASE_TYPES[number];
 

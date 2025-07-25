@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MoreHorizontal, Trash2, Copy, Upload } from "lucide-react";
 import { NewKnowledgeBaseAssetDialog } from "@/components/NewKnowledgeBaseAssetDialog";
-import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
+import { useKnowledgeBaseAssets, type KnowledgeBaseAsset, KNOWLEDGE_BASE_TYPES } from "@/hooks/useKnowledgeBaseAssets";
 
 interface KnowledgeBaseProps {
   onCreateAsset?: (asset: KnowledgeBaseAsset) => void;
@@ -20,7 +18,6 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
     selectedAssets,
     isLoading,
     addKnowledgeBaseAsset,
-    updateKnowledgeBaseAsset,
     deleteKnowledgeBaseAsset,
     deleteSelectedAssets,
     duplicateKnowledgeBaseAsset,
@@ -61,7 +58,7 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
 
   const handleCreateAsset = async (assetData: {
     name: string;
-    type: any;
+    type: typeof KNOWLEDGE_BASE_TYPES[number];
     isInternal: boolean;
   }) => {
     try {

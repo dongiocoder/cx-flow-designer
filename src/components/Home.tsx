@@ -13,9 +13,7 @@ import {
   BookOpen, 
   Users, 
   Building2,
-  Globe,
   Database,
-  Headphones,
   Lightbulb,
   ShoppingBag,
   Command

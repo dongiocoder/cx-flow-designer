@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { storageService } from '@/lib/storage';
 
 // Knowledge base asset types
-const KNOWLEDGE_BASE_TYPES = [
+export const KNOWLEDGE_BASE_TYPES = [
   'Article',
   'Macro', 
   'Token Point',

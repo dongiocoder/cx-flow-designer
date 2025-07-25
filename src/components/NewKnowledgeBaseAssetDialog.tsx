@@ -93,7 +93,7 @@ export function NewKnowledgeBaseAssetDialog({ onCreateAsset }: NewKnowledgeBaseA
         <DialogHeader>
           <DialogTitle>Create New Knowledge Base Asset</DialogTitle>
           <DialogDescription>
-            Fill in the basic details for your new knowledge base asset. You'll be able to edit the content after creation.
+            Fill in the basic details for your new knowledge base asset. You&apos;ll be able to edit the content after creation.
           </DialogDescription>
         </DialogHeader>
         
