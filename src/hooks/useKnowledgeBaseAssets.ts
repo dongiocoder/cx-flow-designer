@@ -79,20 +79,20 @@ export function useKnowledgeBaseAssets() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        // For now, use localStorage with a different key for knowledge base assets
-        const savedData = localStorage.getItem('knowledgeBaseAssets');
+        const savedAssets = await storageService.loadKnowledgeBaseAssets();
         
-        if (savedData) {
-          const parsedAssets = JSON.parse(savedData);
-          setKnowledgeBaseAssets(parsedAssets);
+        if (savedAssets.length > 0) {
+          setKnowledgeBaseAssets(savedAssets);
         } else {
           // If no saved assets, use initial data
           setKnowledgeBaseAssets(initialKnowledgeBaseAssets);
           // Save initial data to storage
-          localStorage.setItem('knowledgeBaseAssets', JSON.stringify(initialKnowledgeBaseAssets));
+          await storageService.saveKnowledgeBaseAssets(initialKnowledgeBaseAssets);
         }
         
-        setStorageStatus('localStorage');
+        // Update storage status
+        const status = storageService.getStorageStatus();
+        setStorageStatus(status.type);
       } catch (error) {
         console.error('Failed to load knowledge base assets:', error);
         // Fallback to initial data
@@ -111,8 +111,10 @@ export function useKnowledgeBaseAssets() {
     if (knowledgeBaseAssets.length > 0 && !isLoading) {
       const saveData = async () => {
         try {
-          localStorage.setItem('knowledgeBaseAssets', JSON.stringify(knowledgeBaseAssets));
-          setStorageStatus('localStorage');
+          await storageService.saveKnowledgeBaseAssets(knowledgeBaseAssets);
+          // Update storage status after successful save
+          const status = storageService.getStorageStatus();
+          setStorageStatus(status.type);
         } catch (error) {
           console.error('Failed to save knowledge base assets:', error);
         }
@@ -122,7 +124,7 @@ export function useKnowledgeBaseAssets() {
     }
   }, [knowledgeBaseAssets, isLoading]);
 
-  const addKnowledgeBaseAsset = (assetData: {
+  const addKnowledgeBaseAsset = async (assetData: {
     name: string;
     type: KnowledgeBaseType;
     isInternal: boolean;
@@ -138,7 +140,19 @@ export function useKnowledgeBaseAssets() {
       lastModified: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString()
     };
-    setKnowledgeBaseAssets(prev => [...prev, newAsset]);
+    
+    const updatedAssets = [...knowledgeBaseAssets, newAsset];
+    setKnowledgeBaseAssets(updatedAssets);
+    
+    // Immediately save to storage
+    try {
+      await storageService.saveKnowledgeBaseAssets(updatedAssets);
+      const status = storageService.getStorageStatus();
+      setStorageStatus(status.type);
+    } catch (error) {
+      console.error('Failed to save new knowledge base asset:', error);
+    }
+    
     return newAsset;
   };
 

@@ -59,13 +59,17 @@ export function KnowledgeBase({ onCreateAsset, onEditAsset }: KnowledgeBaseProps
     deleteSelectedAssets();
   };
 
-  const handleCreateAsset = (assetData: {
+  const handleCreateAsset = async (assetData: {
     name: string;
     type: any;
     isInternal: boolean;
   }) => {
-    const newAsset = addKnowledgeBaseAsset(assetData);
-    onCreateAsset?.(newAsset);
+    try {
+      const newAsset = await addKnowledgeBaseAsset(assetData);
+      onCreateAsset?.(newAsset);
+    } catch (error) {
+      console.error('Failed to create knowledge base asset:', error);
+    }
   };
 
   if (isLoading) {

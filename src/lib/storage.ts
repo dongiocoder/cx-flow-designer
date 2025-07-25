@@ -1,6 +1,12 @@
 import type { ContactDriver } from '@/hooks/useContactDrivers';
+import type { KnowledgeBaseAsset } from '@/hooks/useKnowledgeBaseAssets';
 
-const STORAGE_KEY = 'cx-contact-drivers';
+const STORAGE_KEY = 'cx-flow-designer-data';
+
+interface AppData {
+  contactDrivers: ContactDriver[];
+  knowledgeBaseAssets: KnowledgeBaseAsset[];
+}
 const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
 const GIST_ID = process.env.NEXT_PUBLIC_GIST_ID;
 
@@ -14,6 +20,7 @@ interface GistResponse {
 
 class StorageService {
   private isOnline = true;
+  private cachedData: AppData | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -24,7 +31,84 @@ class StorageService {
     }
   }
 
-  async saveData(data: ContactDriver[]): Promise<void> {
+  // Load all data (contact drivers + knowledge base assets)
+  async loadAllData(): Promise<AppData> {
+    if (this.cachedData) {
+      return this.cachedData;
+    }
+
+    try {
+      // Try to load from GitHub Gist first if we have credentials and are online
+      if (this.isOnline && GITHUB_TOKEN && GIST_ID) {
+        const gistData = await this.loadFromGist();
+        if (gistData) {
+          // Update localStorage with the latest data from Gist
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(gistData));
+          }
+          this.cachedData = gistData;
+          return gistData;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load from GitHub Gist, falling back to localStorage:', error);
+    }
+
+    // Fallback to localStorage
+    if (typeof window !== 'undefined') {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          // Handle both old format (just contact drivers) and new format (combined data)
+          if (Array.isArray(parsed)) {
+            // Old format - just contact drivers
+            const data: AppData = {
+              contactDrivers: parsed,
+              knowledgeBaseAssets: []
+            };
+            this.cachedData = data;
+            return data;
+          } else {
+            // New format - combined data
+            this.cachedData = parsed;
+            return parsed;
+          }
+        } catch (e) {
+          console.warn('Failed to parse stored data:', e);
+        }
+      }
+
+      // Check for old contact drivers key
+      const oldContactDrivers = localStorage.getItem('cx-contact-drivers');
+      if (oldContactDrivers) {
+        try {
+          const parsed = JSON.parse(oldContactDrivers);
+          const data: AppData = {
+            contactDrivers: Array.isArray(parsed) ? parsed : [],
+            knowledgeBaseAssets: []
+          };
+          this.cachedData = data;
+          return data;
+        } catch (e) {
+          console.warn('Failed to parse old contact drivers data:', e);
+        }
+      }
+    }
+
+    // Return empty data if nothing is found
+    const emptyData: AppData = {
+      contactDrivers: [],
+      knowledgeBaseAssets: []
+    };
+    this.cachedData = emptyData;
+    return emptyData;
+  }
+
+  // Save all data
+  async saveAllData(data: AppData): Promise<void> {
+    this.cachedData = data; // Update cache
+
     try {
       // Always save to localStorage first (instant backup)
       if (typeof window !== 'undefined') {
@@ -41,36 +125,31 @@ class StorageService {
     }
   }
 
-  async loadData(): Promise<ContactDriver[]> {
-    try {
-      // Try to load from GitHub Gist first if we have credentials and are online
-      if (this.isOnline && GITHUB_TOKEN && GIST_ID) {
-        const gistData = await this.loadFromGist();
-        if (gistData && gistData.length > 0) {
-          // Update localStorage with the latest data from Gist
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(gistData));
-          }
-          return gistData;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load from GitHub Gist, falling back to localStorage:', error);
-    }
-
-    // Fallback to localStorage
-    if (typeof window !== 'undefined') {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        return JSON.parse(savedData);
-      }
-    }
-
-    // Return empty array if nothing is found
-    return [];
+  // Backward compatibility methods for contact drivers
+  async saveData(contactDrivers: ContactDriver[]): Promise<void> {
+    const allData = await this.loadAllData();
+    allData.contactDrivers = contactDrivers;
+    await this.saveAllData(allData);
   }
 
-  private async saveToGist(data: ContactDriver[]): Promise<void> {
+  async loadData(): Promise<ContactDriver[]> {
+    const allData = await this.loadAllData();
+    return allData.contactDrivers;
+  }
+
+  // New methods for knowledge base assets
+  async saveKnowledgeBaseAssets(assets: KnowledgeBaseAsset[]): Promise<void> {
+    const allData = await this.loadAllData();
+    allData.knowledgeBaseAssets = assets;
+    await this.saveAllData(allData);
+  }
+
+  async loadKnowledgeBaseAssets(): Promise<KnowledgeBaseAsset[]> {
+    const allData = await this.loadAllData();
+    return allData.knowledgeBaseAssets;
+  }
+
+  private async saveToGist(data: AppData): Promise<void> {
     const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       method: 'PATCH',
       headers: {
@@ -92,7 +171,7 @@ class StorageService {
     }
   }
 
-  private async loadFromGist(): Promise<ContactDriver[] | null> {
+  private async loadFromGist(): Promise<AppData | null> {
     const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       headers: {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
@@ -108,7 +187,21 @@ class StorageService {
     const fileContent = gist.files['cx-flow-designer-data.json']?.content;
     
     if (fileContent) {
-      return JSON.parse(fileContent);
+      const parsed = JSON.parse(fileContent);
+      // Handle both old format (just contact drivers) and new format (combined data)
+      if (Array.isArray(parsed)) {
+        // Old format - just contact drivers
+        return {
+          contactDrivers: parsed,
+          knowledgeBaseAssets: []
+        };
+      } else {
+        // New format - combined data, ensure both properties exist
+        return {
+          contactDrivers: parsed.contactDrivers || [],
+          knowledgeBaseAssets: parsed.knowledgeBaseAssets || []
+        };
+      }
     }
 
     return null;

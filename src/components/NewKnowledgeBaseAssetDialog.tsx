@@ -27,25 +27,46 @@ interface KnowledgeBaseAssetData {
 }
 
 interface NewKnowledgeBaseAssetDialogProps {
-  onCreateAsset: (assetData: KnowledgeBaseAssetData) => void;
+  onCreateAsset: (assetData: KnowledgeBaseAssetData) => Promise<void>;
 }
 
 export function NewKnowledgeBaseAssetDialog({ onCreateAsset }: NewKnowledgeBaseAssetDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<KnowledgeBaseAssetData>({
     name: '',
     type: 'Article',
     isInternal: true
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim()) {
+    if (!formData.name.trim() || isCreating) {
       return;
     }
 
-    onCreateAsset(formData);
+    setIsCreating(true);
+    
+    try {
+      await onCreateAsset(formData);
+      
+      // Reset form and close dialog
+      setFormData({
+        name: '',
+        type: 'Article',
+        isInternal: true
+      });
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Failed to create asset:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isCreating) return; // Prevent cancel while creating
     
     // Reset form and close dialog
     setFormData({
@@ -53,16 +74,7 @@ export function NewKnowledgeBaseAssetDialog({ onCreateAsset }: NewKnowledgeBaseA
       type: 'Article',
       isInternal: true
     });
-    setIsOpen(false);
-  };
-
-  const handleCancel = () => {
-    // Reset form and close dialog
-    setFormData({
-      name: '',
-      type: 'Article',
-      isInternal: true
-    });
+    setIsCreating(false);
     setIsOpen(false);
   };
 
@@ -159,15 +171,16 @@ export function NewKnowledgeBaseAssetDialog({ onCreateAsset }: NewKnowledgeBaseA
               type="button" 
               variant="outline" 
               onClick={handleCancel}
+              disabled={isCreating}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              disabled={!formData.name.trim()}
+              disabled={!formData.name.trim() || isCreating}
               className="bg-black text-white hover:bg-gray-800"
             >
-              Create Asset
+              {isCreating ? 'Creating...' : 'Create Asset'}
             </Button>
           </DialogFooter>
         </form>
