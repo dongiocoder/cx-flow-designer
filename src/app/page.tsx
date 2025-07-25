@@ -9,10 +9,12 @@ import { useContactDrivers } from "@/hooks/useContactDrivers";
 import { NewContactDriverDialog } from "@/components/NewContactDriverDialog";
 import { DriverDrawer } from "@/components/DriverDrawer";
 import { FlowEditor } from "@/components/FlowEditor";
-import { useState } from "react";
+import { KnowledgeBase } from "@/components/KnowledgeBase";
+import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
 
 type PageMode = 'table' | 'flow-editor';
+type PageSection = 'contact-drivers' | 'knowledge-bases' | 'dashboard' | 'analytics' | 'users' | 'channels' | 'integrations' | 'actions' | 'settings';
 
 export default function Home() {
   const {
@@ -39,6 +41,7 @@ export default function Home() {
   } = useContactDrivers();
 
   const [pageMode, setPageMode] = useState<PageMode>('table');
+  const [currentSection, setCurrentSection] = useState<PageSection>('contact-drivers');
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
@@ -48,6 +51,23 @@ export default function Home() {
   const editingDriver = editingDriverId ? contactDrivers.find(d => d.id === editingDriverId) || null : null;
   const currentFlow = currentFlowId ? getFlowById(currentFlowId) : null;
   const currentFlowDriver = currentFlow ? contactDrivers.find(d => d.flows.some(f => f.id === currentFlowId)) : null;
+
+  // Listen for navigation changes from MainNavigation component
+  useEffect(() => {
+    const handleNavigationChange = (event: CustomEvent) => {
+      const section = event.detail;
+      setCurrentSection(section as PageSection);
+      setPageMode('table');
+      setIsDrawerOpen(false);
+      setSelectedDriverId(null);
+      setCurrentFlowId(null);
+    };
+
+    window.addEventListener('navigation-change', handleNavigationChange as EventListener);
+    return () => {
+      window.removeEventListener('navigation-change', handleNavigationChange as EventListener);
+    };
+  }, []);
 
   const handleCreateContactDriver = (driverData: { 
     name: string; 
@@ -154,9 +174,28 @@ export default function Home() {
 
   const handleLogoClick = () => {
     setPageMode('table');
+    setCurrentSection('contact-drivers');
     setIsDrawerOpen(false);
     setSelectedDriverId(null);
     setCurrentFlowId(null);
+  };
+
+  const handleNavigationChange = (section: string) => {
+    setCurrentSection(section as PageSection);
+    setPageMode('table');
+    setIsDrawerOpen(false);
+    setSelectedDriverId(null);
+    setCurrentFlowId(null);
+  };
+
+  const handleCreateKnowledgeBaseAsset = () => {
+    console.log('Creating new knowledge base asset');
+    // TODO: Implement create knowledge base asset dialog
+  };
+
+  const handleEditKnowledgeBaseAsset = (assetId: string) => {
+    console.log('Editing knowledge base asset:', assetId);
+    // TODO: Implement text editor interface
   };
 
   const handleMenuItemClick = (item: string) => {
@@ -272,13 +311,20 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content Area - Swaps between modes */}
+      {/* Main Content Area - Swaps between sections and modes */}
       <main className={`flex-1 transition-opacity duration-300 ${
         isDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
       }`}>
         {pageMode === 'table' ? (
-          // Contact-Driver Table Mode
-          <div className="p-6 flex-1 overflow-auto">
+          // Table Mode - Different sections
+          currentSection === 'knowledge-bases' ? (
+            <KnowledgeBase 
+              onCreateAsset={handleCreateKnowledgeBaseAsset}
+              onEditAsset={handleEditKnowledgeBaseAsset}
+            />
+          ) : currentSection === 'contact-drivers' ? (
+            // Contact-Driver Table Mode
+            <div className="p-6 flex-1 overflow-auto">
             <div className="space-y-6">
               {/* Bulk Action Bar - Only show when drivers are selected */}
               {selectedDrivers.length > 0 && (
@@ -507,6 +553,15 @@ export default function Home() {
               </Card>
             </div>
           </div>
+          ) : (
+            // Other sections placeholder
+            <div className="p-6 flex-1 overflow-auto">
+              <div className="text-center py-8 text-muted-foreground">
+                <h3 className="text-lg font-medium text-gray-900">{currentSection.charAt(0).toUpperCase() + currentSection.slice(1).replace('-', ' ')}</h3>
+                <p className="text-sm text-gray-500">This section is coming soon.</p>
+              </div>
+            </div>
+          )
         ) : (
           // Flow Editor Mode
           currentFlow && currentFlowDriver ? (

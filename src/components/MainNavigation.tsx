@@ -99,6 +99,9 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
   const handleItemClick = (itemId: string) => {
     setActiveItem(itemId);
     onNavigate?.(itemId);
+    
+    // Dispatch navigation change event for the main page to listen to
+    window.dispatchEvent(new CustomEvent('navigation-change', { detail: itemId }));
   };
 
   return (
