@@ -293,19 +293,88 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave, storageStatus = 'lo
               </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* History Timeline */}
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">History</h3>
+              <div className="space-y-3">
+                {/* Timeline item - Current version */}
+                <div className="flex items-start space-x-2">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-px h-6 bg-gray-200"></div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-green-700">Current Version</div>
+                    <div className="text-xs text-gray-500">
+                      {asset.lastModified ? new Date(asset.lastModified).toLocaleString() : 'Just now'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Timeline item - Previous version */}
+                <div className="flex items-start space-x-2">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full hover:bg-blue-400 cursor-pointer transition-colors"></div>
+                    <div className="w-px h-6 bg-gray-200"></div>
+                  </div>
+                  <div className="flex-1 min-w-0 cursor-pointer hover:bg-gray-50 rounded p-1 -m-1 transition-colors">
+                    <div className="text-xs font-medium text-gray-700">Version 2</div>
+                    <div className="text-xs text-gray-500">2 hours ago</div>
+                    <div className="text-xs text-gray-400">Auto-saved</div>
+                  </div>
+                </div>
+                
+                {/* Timeline item - Older version */}
+                <div className="flex items-start space-x-2">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full hover:bg-blue-400 cursor-pointer transition-colors"></div>
+                    <div className="w-px h-6 bg-gray-200"></div>
+                  </div>
+                  <div className="flex-1 min-w-0 cursor-pointer hover:bg-gray-50 rounded p-1 -m-1 transition-colors">
+                    <div className="text-xs font-medium text-gray-700">Version 1</div>
+                    <div className="text-xs text-gray-500">Yesterday</div>
+                    <div className="text-xs text-gray-400">Manual save</div>
+                  </div>
+                </div>
+                
+                {/* Timeline item - Initial version */}
+                <div className="flex items-start space-x-2">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full hover:bg-blue-400 cursor-pointer transition-colors"></div>
+                  </div>
+                  <div className="flex-1 min-w-0 cursor-pointer hover:bg-gray-50 rounded p-1 -m-1 transition-colors">
+                    <div className="text-xs font-medium text-gray-700">Initial Version</div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(asset.dateCreated).toLocaleDateString()}
+                    </div>
+                    <div className="text-xs text-gray-400">Created</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* References */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Used In</h3>
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  Export as PDF
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  Copy to Clipboard
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  View History
-                </Button>
+                {/* Mock references - these would come from actual flow data */}
+                <div className="p-2 bg-gray-50 rounded border text-xs">
+                  <div className="font-medium text-gray-900">Customer Support Flow</div>
+                  <div className="text-gray-500">Step 3: Initial Response</div>
+                </div>
+                <div className="p-2 bg-gray-50 rounded border text-xs">
+                  <div className="font-medium text-gray-900">Password Reset Flow</div>
+                  <div className="text-gray-500">Step 1: Verification</div>
+                </div>
+                <div className="p-2 bg-gray-50 rounded border text-xs">
+                  <div className="font-medium text-gray-900">Billing Inquiry Flow</div>
+                  <div className="text-gray-500">Step 2: FAQ Response</div>
+                </div>
+                
+                {/* No references state */}
+                {/* <div className="text-xs text-gray-500 italic">
+                  Not currently used in any flows
+                </div> */}
               </div>
             </div>
           </div>
