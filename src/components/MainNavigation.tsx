@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Plus,
   Table,
+  Bot,
   Layers,
   Plug,
   Zap
@@ -48,8 +49,8 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
     },
     {
       id: "flows",
-      label: "Flow Designer",
-      icon: <MessageSquare className="h-5 w-5" />,
+      label: "AI Agents",
+      icon: <Bot className="h-5 w-5" />,
       isActive: activeItem === "flows"
     },
     {

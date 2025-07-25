@@ -32,7 +32,7 @@ export default function RootLayout({
         <TooltipProvider>
           <div className="flex h-screen">
             {/* Left Navigation */}
-            <aside className="flex-shrink-0">
+            <aside className="flex-shrink-0 h-full">
               <MainNavigation />
             </aside>
             

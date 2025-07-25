@@ -11,6 +11,7 @@ import { DriverDrawer } from "@/components/DriverDrawer";
 import { FlowEditor } from "@/components/FlowEditor";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { KnowledgeBaseEditor } from "@/components/KnowledgeBaseEditor";
+import { Home as Dashboard } from "@/components/Home";
 import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
 import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
@@ -49,7 +50,7 @@ export default function Home() {
   } = useKnowledgeBaseAssets();
 
   const [pageMode, setPageMode] = useState<PageMode>('table');
-  const [currentSection, setCurrentSection] = useState<PageSection>('contact-drivers');
+  const [currentSection, setCurrentSection] = useState<PageSection>('dashboard');
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
@@ -342,7 +343,9 @@ export default function Home() {
       }`}>
         {pageMode === 'table' ? (
           // Table Mode - Different sections
-          currentSection === 'knowledge-bases' ? (
+          currentSection === 'dashboard' ? (
+            <Dashboard onNavigate={handleNavigationChange} />
+          ) : currentSection === 'knowledge-bases' ? (
             <KnowledgeBase 
               onCreateAsset={handleCreateKnowledgeBaseAsset}
               onEditAsset={handleEditKnowledgeBaseAsset}
