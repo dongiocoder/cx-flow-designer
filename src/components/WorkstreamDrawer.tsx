@@ -10,10 +10,6 @@ import {
   Copy, 
   Trash2, 
   TrendingUp, 
-  TrendingDown, 
-  Phone, 
-  Mail, 
-  MessageCircle, 
   MoreHorizontal 
 } from "lucide-react";
 import { Workstream } from "@/hooks/useWorkstreams";

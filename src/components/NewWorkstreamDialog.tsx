@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ArrowLeft, ArrowRight, Target, ArrowDown, Activity, FileText, ChevronDown, ChevronRight, TrendingUp, BarChart3, DollarSign } from "lucide-react";
+import { Plus, ArrowLeft, Target, ArrowDown, Activity, FileText, ChevronDown, ChevronRight, TrendingUp, BarChart3, DollarSign } from "lucide-react";
 import type { Workstream } from "@/hooks/useWorkstreams";
 
 interface NewWorkstreamDialogProps {
