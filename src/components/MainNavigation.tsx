@@ -15,7 +15,8 @@ import {
   Bot,
   Layers,
   Plug,
-  Zap
+  Zap,
+  Workflow
 } from "lucide-react";
 
 interface NavigationItem {
@@ -45,6 +46,12 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       label: "Contact Drivers",
       icon: <Table className="h-5 w-5" />,
       isActive: activeItem === "contact-drivers"
+    },
+    {
+      id: "workstreams",
+      label: "Workstreams",
+      icon: <Workflow className="h-5 w-5" />,
+      isActive: activeItem === "workstreams"
     },
     {
       id: "flows",

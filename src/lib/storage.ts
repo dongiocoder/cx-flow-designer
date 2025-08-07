@@ -1,11 +1,13 @@
 import type { ContactDriver } from '@/hooks/useContactDrivers';
 import type { KnowledgeBaseAsset } from '@/hooks/useKnowledgeBaseAssets';
+import type { Workstream } from '@/hooks/useWorkstreams';
 
 const STORAGE_KEY = 'cx-flow-designer-data';
 
 interface AppData {
   contactDrivers: ContactDriver[];
   knowledgeBaseAssets: KnowledgeBaseAsset[];
+  workstreams: Workstream[];
 }
 const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
 const GIST_ID = process.env.NEXT_PUBLIC_GIST_ID;
@@ -65,7 +67,8 @@ class StorageService {
             // Old format - just contact drivers
             const data: AppData = {
               contactDrivers: parsed,
-              knowledgeBaseAssets: []
+              knowledgeBaseAssets: [],
+              workstreams: []
             };
             this.cachedData = data;
             return data;
@@ -79,14 +82,15 @@ class StorageService {
         }
       }
 
-      // Check for old contact drivers key
+                // Check for old contact drivers key
       const oldContactDrivers = localStorage.getItem('cx-contact-drivers');
       if (oldContactDrivers) {
         try {
           const parsed = JSON.parse(oldContactDrivers);
           const data: AppData = {
             contactDrivers: Array.isArray(parsed) ? parsed : [],
-            knowledgeBaseAssets: []
+            knowledgeBaseAssets: [],
+            workstreams: []
           };
           this.cachedData = data;
           return data;
@@ -99,7 +103,8 @@ class StorageService {
     // Return empty data if nothing is found
     const emptyData: AppData = {
       contactDrivers: [],
-      knowledgeBaseAssets: []
+      knowledgeBaseAssets: [],
+      workstreams: []
     };
     this.cachedData = emptyData;
     return emptyData;
@@ -149,6 +154,18 @@ class StorageService {
     return allData.knowledgeBaseAssets;
   }
 
+  // New methods for workstreams
+  async saveWorkstreams(workstreams: Workstream[]): Promise<void> {
+    const allData = await this.loadAllData();
+    allData.workstreams = workstreams;
+    await this.saveAllData(allData);
+  }
+
+  async loadWorkstreams(): Promise<Workstream[]> {
+    const allData = await this.loadAllData();
+    return allData.workstreams;
+  }
+
   private async saveToGist(data: AppData): Promise<void> {
     const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       method: 'PATCH',
@@ -193,13 +210,15 @@ class StorageService {
         // Old format - just contact drivers
         return {
           contactDrivers: parsed,
-          knowledgeBaseAssets: []
+          knowledgeBaseAssets: [],
+          workstreams: []
         };
       } else {
-        // New format - combined data, ensure both properties exist
+        // New format - combined data, ensure all properties exist
         return {
           contactDrivers: parsed.contactDrivers || [],
-          knowledgeBaseAssets: parsed.knowledgeBaseAssets || []
+          knowledgeBaseAssets: parsed.knowledgeBaseAssets || [],
+          workstreams: parsed.workstreams || []
         };
       }
     }

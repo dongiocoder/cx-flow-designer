@@ -1,1 +1,10 @@
- 
+<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="80" fill="#1a1a1a"/>
+  <g fill="white">
+    <!-- X -->
+    <path d="M20 15 L45 40 L20 65 L30 65 L50 45 L70 65 L80 65 L55 40 L80 15 L70 15 L50 35 L30 15 Z"/>
+    <!-- O -->
+    <circle cx="140" cy="40" r="25" fill="none" stroke="white" stroke-width="8"/>
+    <circle cx="140" cy="40" r="10" fill="white"/>
+  </g>
+</svg> 
