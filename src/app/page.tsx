@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+// Using DropdownMenu for a borderless, text-style client selector
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2, Wrench, Upload, Info } from "lucide-react";
 import { useContactDrivers } from "@/hooks/useContactDrivers";
@@ -86,6 +87,60 @@ export default function Home() {
   const [editingWorkstreamId, setEditingWorkstreamId] = useState<string | null>(null);
   const [currentAssetId, setCurrentAssetId] = useState<string | null>(null);
   const [currentAssetData, setCurrentAssetData] = useState<KnowledgeBaseAsset | null>(null);
+
+  // Global client picker state
+  const [clients, setClients] = useState<string[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+
+  // Initialize clients and selection from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedClientsRaw = localStorage.getItem('cx-client-list');
+    const storedSelected = localStorage.getItem('cx-selected-client');
+    const defaultClients = ["HelloFresh", "Warby Parker"];
+    let initialClients: string[] = defaultClients;
+    try {
+      if (storedClientsRaw) {
+        const parsed = JSON.parse(storedClientsRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          initialClients = parsed;
+        }
+      }
+    } catch {
+      // ignore parse errors and fall back to defaults
+    }
+    setClients(initialClients);
+    if (storedSelected && initialClients.includes(storedSelected)) {
+      setSelectedClient(storedSelected);
+    } else {
+      setSelectedClient(initialClients[0] || "");
+      localStorage.setItem('cx-selected-client', initialClients[0] || "");
+    }
+  }, []);
+
+  const handleClientChange = (value: string) => {
+    if (value === '__add__') {
+      const name = typeof window !== 'undefined' ? window.prompt('Add client name') : null;
+      if (name && name.trim()) {
+        const newName = name.trim();
+        const updated = Array.from(new Set([...
+          clients,
+          newName
+        ]));
+        setClients(updated);
+        setSelectedClient(newName);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cx-client-list', JSON.stringify(updated));
+          localStorage.setItem('cx-selected-client', newName);
+        }
+      }
+      return;
+    }
+    setSelectedClient(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cx-selected-client', value);
+    }
+  };
 
   const selectedDriver = selectedDriverId ? contactDrivers.find(d => d.id === selectedDriverId) || null : null;
   const selectedWorkstream = selectedWorkstreamId ? workstreams.find(w => w.id === selectedWorkstreamId) || null : null;
@@ -432,6 +487,30 @@ export default function Home() {
             >
               Flow Designer
             </button>
+            {/* Client picker - text-style with small chevron */}
+            <div className="ml-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex items-center space-x-1 text-xl font-semibold text-foreground hover:text-foreground/80"
+                    aria-label="Select client"
+                  >
+                    <span>{selectedClient || 'Select client'}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 opacity-70">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {clients.map((c) => (
+                    <DropdownMenuItem key={c} onClick={() => handleClientChange(c)}>
+                      {c}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem onClick={() => handleClientChange('__add__')}>+ Add client…</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Right side - Avatar with dropdown */}
@@ -559,7 +638,7 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="col-span-1 flex items-center space-x-1">
-                        <span>Containment</span>
+                        <span>AI containment</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Info className="h-3 w-3 text-muted-foreground cursor-help" />

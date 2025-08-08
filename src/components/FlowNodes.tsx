@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Handle, Position } from '@xyflow/react';
 import { Play, CheckCircle, AlertTriangle, Bot, Phone, Mail, MessageCircle, User, Settings, Target, Globe, HelpCircle, Video, MessageSquare, UserCheck, Search, ClipboardCheck, BarChart3, ChevronDown } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Node data interface
 export interface CustomNodeData extends Record<string, unknown> {
@@ -9,6 +11,7 @@ export interface CustomNodeData extends Record<string, unknown> {
   stepType?: string;
   description?: string;
   icon?: string;
+  talkingPointHtml?: string;
 }
 
 interface CustomNodeProps {
@@ -45,7 +48,8 @@ const STEP_TYPE_PRESETS = {
     { value: 'diagnosis', label: 'Diagnosis', icon: Search },
     { value: 'resolution', label: 'Resolution', icon: ClipboardCheck },
     { value: 'survey', label: 'Survey', icon: BarChart3 },
-    { value: 'escalation', label: 'Escalation', icon: AlertTriangle }
+    { value: 'escalation', label: 'Escalation', icon: AlertTriangle },
+    { value: 'closing', label: 'Closing', icon: CheckCircle }
   ],
   'outcome': [
     { value: 'resolved', label: 'Issue Resolved', icon: CheckCircle },
@@ -103,6 +107,7 @@ const getStepIcon = (stepType: string): any => {
     resolution: ClipboardCheck,
     survey: BarChart3,
     escalation: AlertTriangle,
+    closing: CheckCircle,
     resolved: CheckCircle,
     'csat-sent': BarChart3,
     'ticket-created': ClipboardCheck,
@@ -420,6 +425,15 @@ export function PillNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
 export function StepNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
   const colors = getCategoryColors(data.category || 'self-service');
   const stepTypeOptions = STEP_TYPE_PRESETS[data.category || 'self-service'] || [];
+  const [isTalkingOpen, setIsTalkingOpen] = useState(false);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   // Get icon based on selected step type
   const Icon = getStepIcon(data.stepType || 'website');
@@ -436,6 +450,66 @@ export function StepNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
     }
   };
 
+  const toggleTalkingPoint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTalkingOpen((prev) => !prev);
+  };
+
+  const applyFormat = (command: string) => {
+    document.execCommand(command);
+    // After formatting, persist content
+    if (editorRef.current && onNodeEdit) {
+      onNodeEdit(id, { talkingPointHtml: editorRef.current.innerHTML });
+    }
+  };
+
+  const onEditorInput = () => {
+    if (editorRef.current && onNodeEdit) {
+      onNodeEdit(id, { talkingPointHtml: editorRef.current.innerHTML });
+    }
+  };
+
+  const onEditorClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  // Smart positioning to the right of card, avoiding viewport overflow
+  const computePanelPosition = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const panelWidth = 260;
+    const panelHeight = 220; // approximate
+    const padding = 8;
+
+    let left = rect.right + padding;
+    let top = rect.top;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    if (left + panelWidth > vw) {
+      left = Math.max(padding, rect.left - padding - panelWidth);
+    }
+    if (top + panelHeight > vh) {
+      top = Math.max(padding, vh - panelHeight - padding);
+    }
+
+    setPanelStyle({ position: 'fixed', left, top, width: panelWidth, zIndex: 9999 });
+  };
+
+  useEffect(() => {
+    if (!isTalkingOpen) return;
+    computePanelPosition();
+    const onResize = () => computePanelPosition();
+    const onScroll = () => computePanelPosition();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [isTalkingOpen]);
+
 
 
   return (
@@ -445,6 +519,7 @@ export function StepNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
         ${colors.border} min-w-[120px] max-w-[160px]
         shadow-sm hover:shadow transition-all duration-200
       `}
+      ref={containerRef}
     >
       <div className="p-1.5">
         <div className="flex items-start space-x-1">
@@ -472,6 +547,49 @@ export function StepNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) {
               multiline
             />
           </div>
+          {/* Talking point button for agent steps */}
+          {data.category === 'agent' && (
+            <div className="relative">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="ml-1 mt-0.5 w-4 h-4 rounded bg-yellow-100 text-yellow-800 border border-yellow-300 flex items-center justify-center hover:bg-yellow-200"
+                    title="Talking point"
+                    onClick={toggleTalkingPoint}
+                  >
+                    <MessageSquare className="w-2.5 h-2.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Talking point
+                </TooltipContent>
+              </Tooltip>
+              {isTalkingOpen && isClient && createPortal(
+                <div
+                  className="bg-white border border-gray-200 rounded shadow-lg p-2"
+                  style={panelStyle}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center space-x-1 mb-2">
+                    <button className="px-1 py-0.5 text-xs border rounded hover:bg-gray-50" onClick={() => applyFormat('bold')}>B</button>
+                    <button className="px-1 py-0.5 text-xs border rounded hover:bg-gray-50 italic" onClick={() => applyFormat('italic')}>I</button>
+                    <button className="px-1 py-0.5 text-xs border rounded hover:bg-gray-50 underline" onClick={() => applyFormat('underline')}>U</button>
+                    <button className="px-1 py-0.5 text-xs border rounded hover:bg-gray-50" onClick={() => applyFormat('insertUnorderedList')}>• List</button>
+                  </div>
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="border border-gray-200 rounded p-2 text-[10px] leading-snug min-h-[60px] max-h-[200px] overflow-auto"
+                    onInput={onEditorInput}
+                    onClick={onEditorClick}
+                    dangerouslySetInnerHTML={{ __html: (data.talkingPointHtml as string) || '' }}
+                  />
+                </div>,
+                document.body
+              )}
+            </div>
+          )}
         </div>
       </div>
 
