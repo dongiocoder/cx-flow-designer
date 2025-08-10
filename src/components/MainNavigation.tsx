@@ -11,7 +11,6 @@ import {
   FileText,
   HelpCircle,
   Plus,
-  Table,
   Bot,
   Layers,
   Plug,

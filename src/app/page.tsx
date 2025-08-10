@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 // Using DropdownMenu for a borderless, text-style client selector
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2, Wrench, Upload, Info } from "lucide-react";
+import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2, Wrench } from "lucide-react";
 
 import { useWorkstreams, type Workstream } from "@/hooks/useWorkstreams";
 import { NewWorkstreamDialog } from "@/components/NewWorkstreamDialog";

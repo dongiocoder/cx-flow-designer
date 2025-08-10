@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, MoreHorizontal, Edit, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Edit, Copy, Trash2 } from "lucide-react";
 import { Workstream, ContactDriver, Campaign, Process } from "@/hooks/useWorkstreams";
 import { SubEntityDialog } from "@/components/SubEntityDialog";
+
+type SubEntityData = Omit<ContactDriver | Campaign | Process, 'id' | 'createdAt' | 'lastModified' | 'flows'>;
 
 interface WorkstreamDetailPageProps {
   workstreamId: string;
@@ -14,14 +16,14 @@ interface WorkstreamDetailPageProps {
   workstreams: Workstream[];
   onBack: () => void;
   // CRUD operations
-  onCreateContactDriver?: (workstreamId: string, data: any) => void;
-  onUpdateContactDriver?: (workstreamId: string, id: string, data: any) => void;
+  onCreateContactDriver?: (workstreamId: string, data: SubEntityData) => void;
+  onUpdateContactDriver?: (workstreamId: string, id: string, data: Partial<SubEntityData>) => void;
   onDeleteContactDriver?: (workstreamId: string, id: string) => void;
-  onCreateCampaign?: (workstreamId: string, data: any) => void;
-  onUpdateCampaign?: (workstreamId: string, id: string, data: any) => void;
+  onCreateCampaign?: (workstreamId: string, data: SubEntityData) => void;
+  onUpdateCampaign?: (workstreamId: string, id: string, data: Partial<SubEntityData>) => void;
   onDeleteCampaign?: (workstreamId: string, id: string) => void;
-  onCreateProcess?: (workstreamId: string, data: any) => void;
-  onUpdateProcess?: (workstreamId: string, id: string, data: any) => void;
+  onCreateProcess?: (workstreamId: string, data: SubEntityData) => void;
+  onUpdateProcess?: (workstreamId: string, id: string, data: Partial<SubEntityData>) => void;
   onDeleteProcess?: (workstreamId: string, id: string) => void;
 }
 
@@ -92,7 +94,7 @@ export function WorkstreamDetailPage({
   const displayName = getSubEntityDisplayName();
 
   // CRUD handlers
-  const handleCreateSubEntity = (subEntityData: any) => {
+  const handleCreateSubEntity = (subEntityData: SubEntityData) => {
     switch (subEntityType) {
       case 'contact-drivers':
         onCreateContactDriver?.(workstreamId, subEntityData);
@@ -106,7 +108,7 @@ export function WorkstreamDetailPage({
     }
   };
 
-  const handleUpdateSubEntity = (id: string, subEntityData: any) => {
+  const handleUpdateSubEntity = (id: string, subEntityData: Partial<SubEntityData>) => {
     switch (subEntityType) {
       case 'contact-drivers':
         onUpdateContactDriver?.(workstreamId, id, subEntityData);

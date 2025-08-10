@@ -739,7 +739,7 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) =>
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process) =>
               entity.id === subEntityId
                 ? { 
                     ...entity, 
@@ -761,7 +761,7 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process) => ({
               ...entity,
               flows: entity.flows.filter((flow: Flow) => flow.id !== flowId),
               lastModified: new Date().toISOString().split('T')[0]

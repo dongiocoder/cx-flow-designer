@@ -17,10 +17,12 @@ import {
 import { Plus } from "lucide-react";
 import { ContactDriver, Campaign, Process } from "@/hooks/useWorkstreams";
 
+type SubEntityData = Omit<ContactDriver | Campaign | Process, 'id' | 'createdAt' | 'lastModified' | 'flows'>;
+
 interface SubEntityDialogProps {
   subEntityType: 'contact-drivers' | 'campaigns' | 'processes';
-  onCreateSubEntity: (subEntityData: any) => void;
-  onUpdateSubEntity?: (id: string, subEntityData: any) => void;
+  onCreateSubEntity: (subEntityData: SubEntityData) => void;
+  onUpdateSubEntity?: (id: string, subEntityData: Partial<SubEntityData>) => void;
   editingSubEntity?: ContactDriver | Campaign | Process | null;
   onCancelEdit?: () => void;
 }
