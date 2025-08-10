@@ -31,7 +31,7 @@ interface MainNavigationProps {
 }
 
 export function MainNavigation({ onNavigate }: MainNavigationProps) {
-  const [activeItem, setActiveItem] = useState<string>("dashboard");
+  const [activeItem, setActiveItem] = useState<string>("workstreams");
 
   // Updated navigation items with your requested changes
   const navigationItems: NavigationItem[] = [
@@ -40,12 +40,6 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       label: "Dashboard",
       icon: <Home className="h-5 w-5" />,
       isActive: activeItem === "dashboard"
-    },
-    {
-      id: "contact-drivers",
-      label: "Contact Drivers",
-      icon: <Table className="h-5 w-5" />,
-      isActive: activeItem === "contact-drivers"
     },
     {
       id: "workstreams",

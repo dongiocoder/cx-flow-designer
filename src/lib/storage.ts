@@ -44,12 +44,47 @@ class StorageService {
       if (this.isOnline && GITHUB_TOKEN && GIST_ID) {
         const gistData = await this.loadFromGist();
         if (gistData) {
-          // Update localStorage with the latest data from Gist
+          // Merge with any existing local data to avoid overwriting
+          // sections that may not yet exist in Gist (e.g., newly added workstreams)
+          let mergedData: AppData = gistData;
+
           if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(gistData));
+            const localRaw = localStorage.getItem(STORAGE_KEY);
+            if (localRaw) {
+              try {
+                const parsed = JSON.parse(localRaw);
+                const localData: AppData = Array.isArray(parsed)
+                  ? { contactDrivers: parsed, knowledgeBaseAssets: [], workstreams: [] }
+                  : {
+                      contactDrivers: parsed.contactDrivers || [],
+                      knowledgeBaseAssets: parsed.knowledgeBaseAssets || [],
+                      workstreams: parsed.workstreams || []
+                    };
+
+                // TEMP FIX: Always prefer local workstreams data over Gist
+                // This prevents Gist from overriding newly created workstreams
+                mergedData = {
+                  contactDrivers: (gistData.contactDrivers && gistData.contactDrivers.length > 0)
+                    ? gistData.contactDrivers
+                    : localData.contactDrivers,
+                  knowledgeBaseAssets: (gistData.knowledgeBaseAssets && gistData.knowledgeBaseAssets.length > 0)
+                    ? gistData.knowledgeBaseAssets
+                    : localData.knowledgeBaseAssets,
+                  workstreams: localData.workstreams, // Always use local workstreams
+                };
+              } catch (e) {
+                console.warn('❌ Failed to parse local data:', e);
+                // If local data can't be parsed, just stick with gist data
+                mergedData = gistData;
+              }
+            }
+
+            // Update localStorage with merged data
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
           }
-          this.cachedData = gistData;
-          return gistData;
+
+          this.cachedData = mergedData;
+          return mergedData;
         }
       }
     } catch (error) {
@@ -156,6 +191,9 @@ class StorageService {
 
   // New methods for workstreams
   async saveWorkstreams(workstreams: Workstream[]): Promise<void> {
+    // Clear cache to force fresh load
+    this.cachedData = null;
+    
     const allData = await this.loadAllData();
     allData.workstreams = workstreams;
     await this.saveAllData(allData);
