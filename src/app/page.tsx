@@ -421,10 +421,8 @@ export default function Home() {
   };
 
   const handleSaveFlow = (flowId: string, nodes: Node[], edges: Edge[]) => {
-    // Check if this flow belongs to a contact driver or workstream
-    if (currentFlowDriver) {
-      saveFlowData(flowId, nodes, edges);
-    } else if (currentFlowWorkstream) {
+    // Save flow data to workstream
+    if (currentFlowWorkstream) {
       saveWorkstreamFlowData(flowId, nodes, edges);
     }
   };
@@ -865,17 +863,17 @@ export default function Home() {
           )
         ) : pageMode === 'flow-editor' ? (
           // Flow Editor Mode
-          currentFlow && (currentFlowDriver || currentFlowWorkstream) ? (
+          currentFlow && currentFlowWorkstream ? (
             <FlowEditor
               flowId={currentFlow.id}
               flowName={currentFlow.name}
-              driverName={currentFlowDriver?.name || currentFlowWorkstream?.name || 'Unknown'}
+              driverName={currentFlowWorkstream?.name || 'Unknown'}
               onBack={handleFlowEditorBack}
               onSave={handleSaveFlow}
-              updateFlow={currentFlowDriver ? updateFlow : updateWorkstreamFlow}
+              updateFlow={updateWorkstreamFlow}
               initialNodes={currentFlow.data?.nodes || []}
               initialEdges={currentFlow.data?.edges || []}
-              storageStatus={currentFlowDriver ? storageStatus : workstreamStorageStatus}
+              storageStatus={workstreamStorageStatus}
             />
           ) : (
             <div className="flex-1 bg-gray-50 flex items-center justify-center">
