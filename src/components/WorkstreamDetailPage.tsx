@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreHorizontal, Edit, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, MoreHorizontal, Edit, Copy, Trash2 } from "lucide-react";
 import { Workstream, ContactDriver, Campaign, Process } from "@/hooks/useWorkstreams";
 import { SubEntityDialog } from "@/components/SubEntityDialog";
 
@@ -184,13 +184,21 @@ export function WorkstreamDetailPage({
                   </span>
                 </div>
               </div>
-              <SubEntityDialog
-                subEntityType={subEntityType}
-                onCreateSubEntity={handleCreateSubEntity}
-                onUpdateSubEntity={handleUpdateSubEntity}
-                editingSubEntity={editingSubEntity}
-                onCancelEdit={() => setEditingSubEntity(null)}
-              />
+              {subEntityType !== 'flows' && (
+                <SubEntityDialog
+                  subEntityType={subEntityType}
+                  onCreateSubEntity={handleCreateSubEntity}
+                  onUpdateSubEntity={handleUpdateSubEntity}
+                  editingSubEntity={editingSubEntity}
+                  onCancelEdit={() => setEditingSubEntity(null)}
+                />
+              )}
+              {subEntityType === 'flows' && (
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Flow
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -221,13 +229,20 @@ export function WorkstreamDetailPage({
                                       subEntityType === 'campaigns' ? 'campaign' :
                                       subEntityType === 'processes' ? 'process' : 'flow'} to get started!
                   </p>
-                  <SubEntityDialog
-                    subEntityType={subEntityType}
-                    onCreateSubEntity={handleCreateSubEntity}
-                    onUpdateSubEntity={handleUpdateSubEntity}
-                    editingSubEntity={editingSubEntity}
-                    onCancelEdit={() => setEditingSubEntity(null)}
-                  />
+                  {subEntityType !== 'flows' ? (
+                    <SubEntityDialog
+                      subEntityType={subEntityType}
+                      onCreateSubEntity={handleCreateSubEntity}
+                      onUpdateSubEntity={handleUpdateSubEntity}
+                      editingSubEntity={editingSubEntity}
+                      onCancelEdit={() => setEditingSubEntity(null)}
+                    />
+                  ) : (
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Flow
+                    </Button>
+                  )}
                 </div>
               ) : (
                 subEntities.map((entity) => {
