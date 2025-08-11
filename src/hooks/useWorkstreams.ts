@@ -438,121 +438,7 @@ export function useWorkstreams() {
     }
   };
 
-  const addFlowToWorkstream = (workstreamId: string, flowData: Omit<Flow, 'id' | 'createdAt' | 'lastModified'>) => {
-    const newFlow: Flow = {
-      id: `${workstreamId}-${Date.now()}`,
-      ...flowData,
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString().split('T')[0]
-    };
-
-    setWorkstreams(prev => prev.map(workstream => 
-      workstream.id === workstreamId 
-        ? { 
-            ...workstream, 
-            flows: [...workstream.flows, newFlow],
-            lastModified: new Date().toISOString().split('T')[0]
-          }
-        : workstream
-    ));
-
-    return newFlow;
-  };
-
-  const deleteFlow = (flowId: string) => {
-    setWorkstreams(prev => prev.map(workstream => ({
-      ...workstream,
-      flows: workstream.flows.filter(flow => flow.id !== flowId),
-      lastModified: new Date().toISOString().split('T')[0]
-    })));
-  };
-
-  const setFlowAsCurrent = (flowId: string) => {
-    setWorkstreams(prev => prev.map(workstream => {
-      // Only update flows if this workstream contains the target flow
-      const hasTargetFlow = workstream.flows.some(flow => flow.id === flowId);
-      
-      if (!hasTargetFlow) {
-        // This workstream doesn't contain the target flow, leave it unchanged
-        return workstream;
-      }
-
-      // This workstream contains the target flow, update its flows
-      return {
-        ...workstream,
-        flows: workstream.flows.map(flow => ({
-          ...flow,
-          type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
-          version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version
-        })),
-        lastModified: new Date().toISOString().split('T')[0]
-      };
-    }));
-  };
-
-  const duplicateFlow = (flowId: string) => {
-    setWorkstreams(prev => prev.map(workstream => {
-      const flowToDuplicate = workstream.flows.find(flow => flow.id === flowId);
-      if (flowToDuplicate) {
-        const duplicatedFlow: Flow = {
-          ...flowToDuplicate,
-          id: `${workstream.id}-${Date.now()}`,
-          name: `${flowToDuplicate.name} (Copy)`,
-          type: 'draft',
-          version: undefined,
-          createdAt: new Date().toISOString(),
-          lastModified: new Date().toISOString().split('T')[0]
-        };
-        return {
-          ...workstream,
-          flows: [...workstream.flows, duplicatedFlow],
-          lastModified: new Date().toISOString().split('T')[0]
-        };
-      }
-      return workstream;
-    }));
-  };
-
-  const saveFlowData = (flowId: string, nodes: Node[], edges: Edge[]) => {
-    setWorkstreams(prev => prev.map(workstream => ({
-      ...workstream,
-      flows: workstream.flows.map(flow => 
-        flow.id === flowId 
-          ? { 
-              ...flow, 
-              data: { nodes, edges },
-              lastModified: new Date().toISOString().split('T')[0]
-            }
-          : flow
-      ),
-      lastModified: new Date().toISOString().split('T')[0]
-    })));
-  };
-
-  const updateFlow = (flowId: string, updates: Partial<Pick<Flow, 'name' | 'description'>>) => {
-    setWorkstreams(prev => prev.map(workstream => ({
-      ...workstream,
-      flows: workstream.flows.map(flow => 
-        flow.id === flowId 
-          ? { 
-              ...flow, 
-              ...updates,
-              lastModified: new Date().toISOString().split('T')[0]
-            }
-          : flow
-      ),
-      lastModified: new Date().toISOString().split('T')[0]
-    })));
-  };
-
-  const getFlowById = (flowId: string): Flow | undefined => {
-    for (const workstream of workstreams) {
-      const flow = workstream.flows.find(f => f.id === flowId);
-      if (flow) return flow;
-    }
-    return undefined;
-  };
-
+  // Selection functions
   const toggleWorkstreamSelection = (id: string) => {
     setSelectedWorkstreams(prev => 
       prev.includes(id) 
@@ -817,7 +703,7 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) =>
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) =>
               entity.id === subEntityId
                 ? { 
                     ...entity, 
@@ -848,7 +734,7 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => ({
               ...entity,
               flows: entity.flows.map((flow: Flow) => 
                 flow.id === flowId 
@@ -872,7 +758,7 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => ({
               ...entity,
               flows: entity.flows.filter((flow: Flow) => flow.id !== flowId),
               lastModified: new Date().toISOString().split('T')[0]
@@ -891,7 +777,7 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => ({
               ...entity,
               flows: entity.flows.map((flow: Flow) => ({
                 ...flow,
@@ -915,7 +801,7 @@ export function useWorkstreams() {
     
     const updatedWorkstreams = workstreams.map(workstream => {
       if (workstream.id === workstreamId) {
-        const updatedSubEntities = (workstream[subEntityType] || []).map((entity: any) => {
+        const updatedSubEntities = (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => {
           const flowToDuplicate = entity.flows.find((f: Flow) => f.id === flowId);
           if (flowToDuplicate) {
             duplicatedFlow = {
@@ -959,13 +845,7 @@ export function useWorkstreams() {
     deleteWorkstream,
     deleteSelectedWorkstreams,
     duplicateWorkstream,
-    addFlowToWorkstream,
-    deleteFlow,
-    setFlowAsCurrent,
-    duplicateFlow,
-    saveFlowData,
-    updateFlow,
-    getFlowById,
+
     toggleWorkstreamSelection,
     selectAllWorkstreams,
     clearSelection,

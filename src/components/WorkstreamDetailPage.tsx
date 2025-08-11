@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, MoreHorizontal, Edit, Copy, Trash2, BarChart3 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Edit, Copy, Trash2, BarChart3 } from "lucide-react";
 import { Workstream, ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreams";
 import { SubEntityDialog } from "@/components/SubEntityDialog";
 import { UniversalSubEntityDrawer } from "@/components/UniversalSubEntityDrawer";
@@ -15,17 +15,17 @@ interface WorkstreamDetailPageProps {
   workstreams: Workstream[];
   onBack: () => void;
   // CRUD operations
-  onCreateContactDriver?: (workstreamId: string, data: any) => void;
-  onUpdateContactDriver?: (workstreamId: string, id: string, data: any) => void;
+  onCreateContactDriver?: (workstreamId: string, data: Omit<ContactDriver, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
+  onUpdateContactDriver?: (workstreamId: string, id: string, data: Omit<ContactDriver, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
   onDeleteContactDriver?: (workstreamId: string, id: string) => void;
-  onCreateCampaign?: (workstreamId: string, data: any) => void;
-  onUpdateCampaign?: (workstreamId: string, id: string, data: any) => void;
+  onCreateCampaign?: (workstreamId: string, data: Omit<Campaign, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
+  onUpdateCampaign?: (workstreamId: string, id: string, data: Omit<Campaign, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
   onDeleteCampaign?: (workstreamId: string, id: string) => void;
-  onCreateProcess?: (workstreamId: string, data: any) => void;
-  onUpdateProcess?: (workstreamId: string, id: string, data: any) => void;
+  onCreateProcess?: (workstreamId: string, data: Omit<Process, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
+  onUpdateProcess?: (workstreamId: string, id: string, data: Omit<Process, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
   onDeleteProcess?: (workstreamId: string, id: string) => void;
-  onCreateFlowEntity?: (workstreamId: string, data: any) => void;
-  onUpdateFlowEntity?: (workstreamId: string, id: string, data: any) => void;
+  onCreateFlowEntity?: (workstreamId: string, data: Omit<FlowEntity, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
+  onUpdateFlowEntity?: (workstreamId: string, id: string, data: Omit<FlowEntity, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
   onDeleteFlowEntity?: (workstreamId: string, id: string) => void;
   // Flow management operations  
   onOpenFlow?: (flowId: string) => void;
@@ -120,7 +120,7 @@ export function WorkstreamDetailPage({
   const displayName = getSubEntityDisplayName();
 
   // CRUD handlers
-  const handleCreateSubEntity = (subEntityData: any) => {
+  const handleCreateSubEntity = (subEntityData: Omit<ContactDriver | Campaign | Process | FlowEntity, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => {
     switch (subEntityType) {
       case 'contact-drivers':
         onCreateContactDriver?.(workstreamId, subEntityData);
@@ -137,7 +137,7 @@ export function WorkstreamDetailPage({
     }
   };
 
-  const handleUpdateSubEntity = (id: string, subEntityData: any) => {
+  const handleUpdateSubEntity = (id: string, subEntityData: Omit<ContactDriver | Campaign | Process | FlowEntity, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => {
     switch (subEntityType) {
       case 'contact-drivers':
         onUpdateContactDriver?.(workstreamId, id, subEntityData);

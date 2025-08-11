@@ -19,8 +19,8 @@ import { ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstr
 
 interface SubEntityDialogProps {
   subEntityType: 'contact-drivers' | 'campaigns' | 'processes' | 'flows';
-  onCreateSubEntity: (subEntityData: any) => void;
-  onUpdateSubEntity?: (id: string, subEntityData: any) => void;
+  onCreateSubEntity: (subEntityData: Omit<ContactDriver | Campaign | Process | FlowEntity, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
+  onUpdateSubEntity?: (id: string, subEntityData: Omit<ContactDriver | Campaign | Process | FlowEntity, 'id' | 'flows' | 'lastModified' | 'createdAt'>) => void;
   editingSubEntity?: ContactDriver | Campaign | Process | FlowEntity | null;
   onCancelEdit?: () => void;
   isMetricsMode?: boolean; // New prop to distinguish between basic creation and metrics editing

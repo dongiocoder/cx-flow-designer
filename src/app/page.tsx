@@ -8,7 +8,7 @@ import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2
 
 import { useWorkstreams, type Workstream, type ContactDriver, type Campaign, type Process, type FlowEntity } from "@/hooks/useWorkstreams";
 import { NewWorkstreamDialog } from "@/components/NewWorkstreamDialog";
-import { WorkstreamDrawer } from "@/components/WorkstreamDrawer";
+
 import { WorkstreamDetailPage } from "@/components/WorkstreamDetailPage";
 import { FlowEditor } from "@/components/FlowEditor";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
@@ -34,13 +34,8 @@ export default function Home() {
     deleteWorkstream,
     deleteSelectedWorkstreams,
     duplicateWorkstream,
-    addFlowToWorkstream,
-    deleteFlow: deleteWorkstreamFlow,
-    setFlowAsCurrent: setWorkstreamFlowAsCurrent,
-    duplicateFlow: duplicateWorkstreamFlow,
-    saveFlowData: saveWorkstreamFlowData,
-    updateFlow: updateWorkstreamFlow,
-    getFlowById: getWorkstreamFlowById,
+
+
     toggleWorkstreamSelection,
     selectAllWorkstreams,
     clearSelection: clearWorkstreamSelection,
@@ -77,7 +72,7 @@ export default function Home() {
 
   const [selectedWorkstreamId, setSelectedWorkstreamId] = useState<string | null>(null);
 
-  const [isWorkstreamDrawerOpen, setIsWorkstreamDrawerOpen] = useState(false);
+  const [_isWorkstreamDrawerOpen, _setIsWorkstreamDrawerOpen] = useState(false);
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
 
   const [editingWorkstreamId, setEditingWorkstreamId] = useState<string | null>(null);
@@ -168,7 +163,7 @@ export default function Home() {
 
     if (storedSelectedWorkstreamId) {
       setSelectedWorkstreamId(storedSelectedWorkstreamId);
-      setIsWorkstreamDrawerOpen(storedIsWorkstreamDrawerOpen);
+      _setIsWorkstreamDrawerOpen(storedIsWorkstreamDrawerOpen);
     }
   }, []);
 
@@ -215,9 +210,9 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cx-is-workstream-drawer-open', isWorkstreamDrawerOpen.toString());
+      localStorage.setItem('cx-is-workstream-drawer-open', _isWorkstreamDrawerOpen.toString());
     }
-  }, [isWorkstreamDrawerOpen]);
+  }, [_isWorkstreamDrawerOpen]);
 
   // Save workstream navigation state
   useEffect(() => {
@@ -264,7 +259,7 @@ export default function Home() {
     }
   };
 
-  const selectedWorkstream = selectedWorkstreamId ? workstreams.find(w => w.id === selectedWorkstreamId) || null : null;
+
   const editingWorkstream = editingWorkstreamId ? workstreams.find(w => w.id === editingWorkstreamId) || null : null;
   
   // Generic flow finding that works across workstreams and sub-entities
@@ -361,7 +356,7 @@ export default function Home() {
       const section = event.detail;
       setCurrentSection(section as PageSection);
       setPageMode('table');
-      setIsWorkstreamDrawerOpen(false);
+      _setIsWorkstreamDrawerOpen(false);
       setSelectedWorkstreamId(null);
       setCurrentFlowId(null);
     };
@@ -459,10 +454,11 @@ export default function Home() {
   };
 
   // Sub-entity flow save handler
-  const handleSaveSubEntityFlow = (flowId: string, nodes: any[], edges: any[]) => {
+  const handleSaveSubEntityFlow = (flowId: string, nodes: Node[], edges: Edge[]) => {
     if (!currentFlowSubEntity) return;
     
-    const { type, entity, workstream } = currentFlowSubEntity;
+    const { workstream } = currentFlowSubEntity;
+    const { type } = currentFlowSubEntity;
     
     // Update the flow within the sub-entity
     const subEntityType = type === 'contactDriver' ? 'contactDrivers' :
@@ -516,7 +512,7 @@ export default function Home() {
   const handleLogoClick = () => {
     setPageMode('table');
     setCurrentSection('workstreams');
-    setIsWorkstreamDrawerOpen(false);
+    _setIsWorkstreamDrawerOpen(false);
     setSelectedWorkstreamId(null);
     setCurrentFlowId(null);
   };
@@ -524,7 +520,7 @@ export default function Home() {
   const handleNavigationChange = (section: string) => {
     setCurrentSection(section as PageSection);
     setPageMode('table');
-    setIsWorkstreamDrawerOpen(false);
+    _setIsWorkstreamDrawerOpen(false);
     setSelectedWorkstreamId(null);
     setCurrentFlowId(null);
     setCurrentAssetId(null);
@@ -595,10 +591,7 @@ export default function Home() {
     setPageMode('table');
   };
 
-  const handleWorkstreamDrawerClose = () => {
-    setIsWorkstreamDrawerOpen(false);
-    setSelectedWorkstreamId(null);
-  };
+
 
 
 
@@ -607,46 +600,13 @@ export default function Home() {
     setCurrentFlowId(null);
     // Restore the previous state: re-open drawer if there was a selected workstream
     if (selectedWorkstreamId) {
-      setIsWorkstreamDrawerOpen(true);
+      _setIsWorkstreamDrawerOpen(true);
     }
   };
 
-  const handleSaveFlow = (flowId: string, nodes: Node[], edges: Edge[]) => {
-    // This is now handled by handleSaveSubEntityFlow for sub-entity flows
-    console.log('handleSaveFlow called but should use handleSaveSubEntityFlow');
-  };
 
-  // Workstream flow handlers
-  const handleOpenWorkstreamFlow = (flowId: string) => {
-    setCurrentFlowId(flowId);
-    setPageMode('flow-editor');
-    setIsWorkstreamDrawerOpen(false);
-  };
 
-  const handleDuplicateWorkstreamFlow = (flowId: string) => {
-    duplicateWorkstreamFlow(flowId);
-  };
 
-  const handleDeleteWorkstreamFlow = (flowId: string) => {
-    deleteWorkstreamFlow(flowId);
-  };
-
-  const handleSetWorkstreamFlowAsCurrent = (flowId: string) => {
-    setWorkstreamFlowAsCurrent(flowId);
-  };
-
-  const handleNewWorkstreamFlow = (workstreamId: string) => {
-    const newFlow = addFlowToWorkstream(workstreamId, {
-      name: 'New Flow',
-      description: 'New flow description',
-      type: 'draft'
-    });
-    if (newFlow) {
-      setCurrentFlowId(newFlow.id);
-      setPageMode('flow-editor');
-      setIsWorkstreamDrawerOpen(false);
-    }
-  };
 
   return (
     <div className="h-full bg-background flex flex-col">
@@ -724,7 +684,7 @@ export default function Home() {
 
       {/* Main Content Area - Swaps between sections and modes */}
       <main className={`flex-1 transition-opacity duration-300 ${
-        isWorkstreamDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
+        _isWorkstreamDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
       }`}>
         {pageMode === 'table' ? (
           // Table Mode - Different sections
@@ -1064,7 +1024,7 @@ export default function Home() {
             <FlowEditor
               flowId={currentFlow.id}
               flowName={currentFlow.name}
-              driverName={(currentFlowSubEntity?.entity as any)?.name || 'Unknown'}
+              driverName={(currentFlowSubEntity?.entity as ContactDriver | Campaign | Process | FlowEntity)?.name || 'Unknown'}
               onBack={handleFlowEditorBack}
               onSave={handleSaveSubEntityFlow}
               updateFlow={(flowId: string, updates: Partial<{ name: string; description: string }>) => {
@@ -1117,17 +1077,7 @@ export default function Home() {
 
 
 
-      {/* Workstream Drawer */}
-      <WorkstreamDrawer
-        workstream={selectedWorkstream}
-        isOpen={isWorkstreamDrawerOpen}
-        onClose={handleWorkstreamDrawerClose}
-        onOpenFlow={handleOpenWorkstreamFlow}
-        onDuplicateFlow={handleDuplicateWorkstreamFlow}
-        onDeleteFlow={handleDeleteWorkstreamFlow}
-        onSetFlowAsCurrent={handleSetWorkstreamFlowAsCurrent}
-        onNewFlow={handleNewWorkstreamFlow}
-      />
+
     </div>
   );
 }
