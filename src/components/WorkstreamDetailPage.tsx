@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, MoreHorizontal, Edit, Copy, Trash2 } from "lucide-react";
-import { Workstream, ContactDriver, Campaign, Process } from "@/hooks/useWorkstreams";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Plus, MoreHorizontal, Edit, Copy, Trash2, BarChart3 } from "lucide-react";
+import { Workstream, ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreams";
 import { SubEntityDialog } from "@/components/SubEntityDialog";
-
-type SubEntityData = Omit<ContactDriver | Campaign | Process, 'id' | 'createdAt' | 'lastModified' | 'flows'>;
+import { UniversalSubEntityDrawer } from "@/components/UniversalSubEntityDrawer";
 
 interface WorkstreamDetailPageProps {
   workstreamId: string;
@@ -16,15 +15,24 @@ interface WorkstreamDetailPageProps {
   workstreams: Workstream[];
   onBack: () => void;
   // CRUD operations
-  onCreateContactDriver?: (workstreamId: string, data: SubEntityData) => void;
-  onUpdateContactDriver?: (workstreamId: string, id: string, data: Partial<SubEntityData>) => void;
+  onCreateContactDriver?: (workstreamId: string, data: any) => void;
+  onUpdateContactDriver?: (workstreamId: string, id: string, data: any) => void;
   onDeleteContactDriver?: (workstreamId: string, id: string) => void;
-  onCreateCampaign?: (workstreamId: string, data: SubEntityData) => void;
-  onUpdateCampaign?: (workstreamId: string, id: string, data: Partial<SubEntityData>) => void;
+  onCreateCampaign?: (workstreamId: string, data: any) => void;
+  onUpdateCampaign?: (workstreamId: string, id: string, data: any) => void;
   onDeleteCampaign?: (workstreamId: string, id: string) => void;
-  onCreateProcess?: (workstreamId: string, data: SubEntityData) => void;
-  onUpdateProcess?: (workstreamId: string, id: string, data: Partial<SubEntityData>) => void;
+  onCreateProcess?: (workstreamId: string, data: any) => void;
+  onUpdateProcess?: (workstreamId: string, id: string, data: any) => void;
   onDeleteProcess?: (workstreamId: string, id: string) => void;
+  onCreateFlowEntity?: (workstreamId: string, data: any) => void;
+  onUpdateFlowEntity?: (workstreamId: string, id: string, data: any) => void;
+  onDeleteFlowEntity?: (workstreamId: string, id: string) => void;
+  // Flow management operations  
+  onOpenFlow?: (flowId: string) => void;
+  onDuplicateFlow?: (flowId: string) => void;
+  onDeleteFlow?: (flowId: string) => void;
+  onSetFlowAsCurrent?: (flowId: string) => void;
+  onNewFlow?: (subEntityId: string) => void;
 }
 
 export function WorkstreamDetailPage({ 
@@ -41,8 +49,19 @@ export function WorkstreamDetailPage({
   onCreateProcess,
   onUpdateProcess,
   onDeleteProcess,
+  onCreateFlowEntity,
+  onUpdateFlowEntity,
+  onDeleteFlowEntity,
+  onOpenFlow,
+  onDuplicateFlow,
+  onDeleteFlow,
+  onSetFlowAsCurrent,
+  onNewFlow,
 }: WorkstreamDetailPageProps) {
-  const [editingSubEntity, setEditingSubEntity] = useState<ContactDriver | Campaign | Process | null>(null);
+  const [editingSubEntity, setEditingSubEntity] = useState<ContactDriver | Campaign | Process | FlowEntity | null>(null);
+  const [selectedSubEntityId, setSelectedSubEntityId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMetricsMode, setIsMetricsMode] = useState(false);
   const workstream = workstreams.find(w => w.id === workstreamId);
   
   if (!workstream) {
@@ -75,6 +94,13 @@ export function WorkstreamDetailPage({
     }
   };
 
+  // Get fresh sub-entity data by ID
+  const getSelectedSubEntity = (): ContactDriver | Campaign | Process | FlowEntity | null => {
+    if (!selectedSubEntityId) return null;
+    const entities = getSubEntities();
+    return entities.find(e => e.id === selectedSubEntityId) || null;
+  };
+
   const getSubEntityDisplayName = () => {
     switch (subEntityType) {
       case 'contact-drivers':
@@ -94,7 +120,7 @@ export function WorkstreamDetailPage({
   const displayName = getSubEntityDisplayName();
 
   // CRUD handlers
-  const handleCreateSubEntity = (subEntityData: SubEntityData) => {
+  const handleCreateSubEntity = (subEntityData: any) => {
     switch (subEntityType) {
       case 'contact-drivers':
         onCreateContactDriver?.(workstreamId, subEntityData);
@@ -105,10 +131,13 @@ export function WorkstreamDetailPage({
       case 'processes':
         onCreateProcess?.(workstreamId, subEntityData);
         break;
+      case 'flows':
+        onCreateFlowEntity?.(workstreamId, subEntityData);
+        break;
     }
   };
 
-  const handleUpdateSubEntity = (id: string, subEntityData: Partial<SubEntityData>) => {
+  const handleUpdateSubEntity = (id: string, subEntityData: any) => {
     switch (subEntityType) {
       case 'contact-drivers':
         onUpdateContactDriver?.(workstreamId, id, subEntityData);
@@ -119,12 +148,22 @@ export function WorkstreamDetailPage({
       case 'processes':
         onUpdateProcess?.(workstreamId, id, subEntityData);
         break;
+      case 'flows':
+        onUpdateFlowEntity?.(workstreamId, id, subEntityData);
+        break;
     }
     setEditingSubEntity(null);
+    setIsMetricsMode(false);
   };
 
-  const handleEditSubEntity = (entity: ContactDriver | Campaign | Process) => {
+  const handleEditSubEntity = (entity: ContactDriver | Campaign | Process | FlowEntity) => {
     setEditingSubEntity(entity);
+    setIsMetricsMode(false);
+  };
+
+  const handleEditMetrics = (entity: ContactDriver | Campaign | Process | FlowEntity) => {
+    setEditingSubEntity(entity);
+    setIsMetricsMode(true);
   };
 
   const handleDeleteSubEntity = (id: string) => {
@@ -138,10 +177,24 @@ export function WorkstreamDetailPage({
       case 'processes':
         onDeleteProcess?.(workstreamId, id);
         break;
+      case 'flows':
+        onDeleteFlowEntity?.(workstreamId, id);
+        break;
     }
   };
 
+  const handleSubEntityClick = (entity: ContactDriver | Campaign | Process | FlowEntity) => {
+    setSelectedSubEntityId(entity.id);
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedSubEntityId(null);
+  };
+
   return (
+    <div className="relative">
     <div className="p-6 flex-1 overflow-auto">
       <div className="space-y-6">
         {/* Header with breadcrumb */}
@@ -184,21 +237,17 @@ export function WorkstreamDetailPage({
                   </span>
                 </div>
               </div>
-              {subEntityType !== 'flows' && (
-                <SubEntityDialog
-                  subEntityType={subEntityType}
-                  onCreateSubEntity={handleCreateSubEntity}
-                  onUpdateSubEntity={handleUpdateSubEntity}
-                  editingSubEntity={editingSubEntity}
-                  onCancelEdit={() => setEditingSubEntity(null)}
-                />
-              )}
-              {subEntityType === 'flows' && (
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Flow
-                </Button>
-              )}
+              <SubEntityDialog
+                subEntityType={subEntityType}
+                onCreateSubEntity={handleCreateSubEntity}
+                onUpdateSubEntity={handleUpdateSubEntity}
+                editingSubEntity={editingSubEntity}
+                onCancelEdit={() => {
+                  setEditingSubEntity(null);
+                  setIsMetricsMode(false);
+                }}
+                isMetricsMode={isMetricsMode}
+              />
             </div>
           </CardContent>
         </Card>
@@ -229,20 +278,17 @@ export function WorkstreamDetailPage({
                                       subEntityType === 'campaigns' ? 'campaign' :
                                       subEntityType === 'processes' ? 'process' : 'flow'} to get started!
                   </p>
-                  {subEntityType !== 'flows' ? (
-                    <SubEntityDialog
-                      subEntityType={subEntityType}
-                      onCreateSubEntity={handleCreateSubEntity}
-                      onUpdateSubEntity={handleUpdateSubEntity}
-                      editingSubEntity={editingSubEntity}
-                      onCancelEdit={() => setEditingSubEntity(null)}
-                    />
-                  ) : (
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Flow
-                    </Button>
-                  )}
+                  <SubEntityDialog
+                    subEntityType={subEntityType}
+                    onCreateSubEntity={handleCreateSubEntity}
+                    onUpdateSubEntity={handleUpdateSubEntity}
+                    editingSubEntity={editingSubEntity}
+                    onCancelEdit={() => {
+                      setEditingSubEntity(null);
+                      setIsMetricsMode(false);
+                    }}
+                    isMetricsMode={isMetricsMode}
+                  />
                 </div>
               ) : (
                 subEntities.map((entity) => {
@@ -253,6 +299,7 @@ export function WorkstreamDetailPage({
                     <div 
                       key={entity.id} 
                       className="grid grid-cols-12 gap-4 items-center py-4 border-b border-t-0 transition-all duration-200 hover:bg-muted/50 hover:shadow-sm cursor-pointer"
+                      onClick={() => handleSubEntityClick(entity)}
                     >
                       <div className="col-span-3">
                         <div className="font-medium truncate">{entity.name}</div>
@@ -294,22 +341,43 @@ export function WorkstreamDetailPage({
                       <div className="col-span-1 flex justify-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <span className="sr-only">Open menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditSubEntity(entity)}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditSubEntity(entity);
+                            }}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {/* TODO: Duplicate */}}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditMetrics(entity);
+                            }}>
+                              <BarChart3 className="mr-2 h-4 w-4" />
+                              Edit Metrics
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              /* TODO: Duplicate */
+                            }}>
                               <Copy className="mr-2 h-4 w-4" />
                               Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteSubEntity(entity.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSubEntity(entity.id);
+                              }}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -326,6 +394,20 @@ export function WorkstreamDetailPage({
           </CardContent>
         </Card>
       </div>
+    </div>
+
+    {/* Universal Sub-Entity Drawer */}
+    <UniversalSubEntityDrawer
+      subEntity={getSelectedSubEntity()}
+      subEntityType={subEntityType}
+      isOpen={isDrawerOpen}
+      onClose={handleCloseDrawer}
+      onOpenFlow={onOpenFlow || (() => {})}
+      onDuplicateFlow={onDuplicateFlow || (() => {})}
+      onDeleteFlow={onDeleteFlow || (() => {})}
+      onSetFlowAsCurrent={onSetFlowAsCurrent || (() => {})}
+      onNewFlow={onNewFlow || (() => {})}
+    />
     </div>
   );
 }

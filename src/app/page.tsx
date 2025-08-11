@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 // Using DropdownMenu for a borderless, text-style client selector
 import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2, Wrench } from "lucide-react";
 
-import { useWorkstreams, type Workstream } from "@/hooks/useWorkstreams";
+import { useWorkstreams, type Workstream, type ContactDriver, type Campaign, type Process, type FlowEntity } from "@/hooks/useWorkstreams";
 import { NewWorkstreamDialog } from "@/components/NewWorkstreamDialog";
 import { WorkstreamDrawer } from "@/components/WorkstreamDrawer";
 import { WorkstreamDetailPage } from "@/components/WorkstreamDetailPage";
@@ -55,7 +55,15 @@ export default function Home() {
     deleteCampaignFromWorkstream,
     addProcessToWorkstream,
     updateProcessInWorkstream,
-    deleteProcessFromWorkstream
+    deleteProcessFromWorkstream,
+    addFlowEntityToWorkstream,
+    updateFlowEntityInWorkstream,
+    deleteFlowEntityFromWorkstream,
+    addFlowToSubEntity,
+    deleteFlowFromSubEntity,
+    setFlowAsCurrentForSubEntity,
+    duplicateFlowInSubEntity,
+    saveFlowDataForSubEntity
   } = useWorkstreams();
 
   const {
@@ -258,9 +266,93 @@ export default function Home() {
 
   const selectedWorkstream = selectedWorkstreamId ? workstreams.find(w => w.id === selectedWorkstreamId) || null : null;
   const editingWorkstream = editingWorkstreamId ? workstreams.find(w => w.id === editingWorkstreamId) || null : null;
-  const currentFlow = currentFlowId ? getWorkstreamFlowById(currentFlowId) : null;
+  
+  // Generic flow finding that works across workstreams and sub-entities
+  const findFlowById = (flowId: string) => {
+    // Try sub-entities within workstreams
+    for (const workstream of workstreams) {
+      // Check contact drivers
+      if (workstream.contactDrivers) {
+        for (const driver of workstream.contactDrivers) {
+          const flow = driver.flows.find(f => f.id === flowId);
+          if (flow) return flow;
+        }
+      }
+      
+      // Check campaigns
+      if (workstream.campaigns) {
+        for (const campaign of workstream.campaigns) {
+          const flow = campaign.flows.find(f => f.id === flowId);
+          if (flow) return flow;
+        }
+      }
+      
+      // Check processes
+      if (workstream.processes) {
+        for (const process of workstream.processes) {
+          const flow = process.flows.find(f => f.id === flowId);
+          if (flow) return flow;
+        }
+      }
+      
+      // Check flow entities (for blank workstreams)
+      if (workstream.flows) {
+        for (const flowEntity of workstream.flows) {
+          if (flowEntity.flows && Array.isArray(flowEntity.flows)) {
+            const flow = flowEntity.flows.find(f => f.id === flowId);
+            if (flow) return flow;
+          }
+        }
+      }
+    }
+    
+    return null;
+  };
 
-  const currentFlowWorkstream = currentFlow ? workstreams.find(w => w.flows.some(f => f.id === currentFlowId)) : null;
+  const currentFlow = currentFlowId ? findFlowById(currentFlowId) : null;
+  
+  // Check for flows within sub-entities
+  const currentFlowSubEntity = currentFlow ? (() => {
+    for (const workstream of workstreams) {
+      // Check contact drivers
+      if (workstream.contactDrivers) {
+        for (const driver of workstream.contactDrivers) {
+          if (driver.flows.some(f => f.id === currentFlowId)) {
+            return { type: 'contactDriver', entity: driver, workstream };
+          }
+        }
+      }
+      
+      // Check campaigns
+      if (workstream.campaigns) {
+        for (const campaign of workstream.campaigns) {
+          if (campaign.flows.some(f => f.id === currentFlowId)) {
+            return { type: 'campaign', entity: campaign, workstream };
+          }
+        }
+      }
+      
+      // Check processes
+      if (workstream.processes) {
+        for (const process of workstream.processes) {
+          if (process.flows.some(f => f.id === currentFlowId)) {
+            return { type: 'process', entity: process, workstream };
+          }
+        }
+      }
+      
+      // Check flow entities (for blank workstreams)
+      if (workstream.flows) {
+        for (const flowEntity of workstream.flows) {
+          if (flowEntity.flows && Array.isArray(flowEntity.flows) && flowEntity.flows.some(f => f.id === currentFlowId)) {
+            return { type: 'flowEntity', entity: flowEntity, workstream };
+          }
+        }
+      }
+    }
+    return null;
+  })() : null;
+  
   const currentAsset = currentAssetData || (currentAssetId ? getAssetById(currentAssetId) : null);
 
   // Listen for navigation changes from MainNavigation component
@@ -281,6 +373,105 @@ export default function Home() {
   }, []);
 
 
+
+  // Flow management handlers for sub-entities
+  const handleNewFlowForSubEntity = async (subEntityId: string) => {
+    if (!currentWorkstreamId || !currentSubEntityType) return;
+    
+    const subEntityTypeMapping = {
+      'contact-drivers': 'contactDrivers',
+      'campaigns': 'campaigns', 
+      'processes': 'processes',
+      'flows': 'flows'
+    } as const;
+    
+    const newFlow = await addFlowToSubEntity(
+      currentWorkstreamId,
+      subEntityId,
+      subEntityTypeMapping[currentSubEntityType],
+      {
+        name: 'New Flow',
+        description: 'Flow description', 
+        type: 'draft'
+      }
+    );
+    
+    if (newFlow) {
+      setCurrentFlowId(newFlow.id);
+      setPageMode('flow-editor');
+    }
+  };
+
+  const handleOpenFlow = (flowId: string) => {
+    setCurrentFlowId(flowId);
+    setPageMode('flow-editor');
+  };
+
+  const handleDuplicateFlowForSubEntity = async (flowId: string) => {
+    if (!currentWorkstreamId || !currentSubEntityType) return;
+    
+    const subEntityTypeMapping = {
+      'contact-drivers': 'contactDrivers',
+      'campaigns': 'campaigns', 
+      'processes': 'processes',
+      'flows': 'flows'
+    } as const;
+    
+    await duplicateFlowInSubEntity(
+      currentWorkstreamId,
+      subEntityTypeMapping[currentSubEntityType],
+      flowId
+    );
+  };
+
+  const handleDeleteFlowForSubEntity = async (flowId: string) => {
+    if (!currentWorkstreamId || !currentSubEntityType) return;
+    
+    const subEntityTypeMapping = {
+      'contact-drivers': 'contactDrivers',
+      'campaigns': 'campaigns', 
+      'processes': 'processes',
+      'flows': 'flows'
+    } as const;
+    
+    await deleteFlowFromSubEntity(
+      currentWorkstreamId,
+      subEntityTypeMapping[currentSubEntityType],
+      flowId
+    );
+  };
+
+  const handleSetFlowAsCurrentForSubEntity = async (flowId: string) => {
+    if (!currentWorkstreamId || !currentSubEntityType) return;
+    
+    const subEntityTypeMapping = {
+      'contact-drivers': 'contactDrivers',
+      'campaigns': 'campaigns', 
+      'processes': 'processes',
+      'flows': 'flows'
+    } as const;
+    
+    await setFlowAsCurrentForSubEntity(
+      currentWorkstreamId,
+      subEntityTypeMapping[currentSubEntityType],
+      flowId
+    );
+  };
+
+  // Sub-entity flow save handler
+  const handleSaveSubEntityFlow = (flowId: string, nodes: any[], edges: any[]) => {
+    if (!currentFlowSubEntity) return;
+    
+    const { type, entity, workstream } = currentFlowSubEntity;
+    
+    // Update the flow within the sub-entity
+    const subEntityType = type === 'contactDriver' ? 'contactDrivers' :
+                         type === 'campaign' ? 'campaigns' : 
+                         type === 'process' ? 'processes' : 
+                         type === 'flowEntity' ? 'flows' : 'flows';
+    
+    saveFlowDataForSubEntity(workstream.id, subEntityType, flowId, nodes, edges);
+  };
 
   // Workstream handlers
   const handleCreateWorkstream = async (workstreamData: Omit<Workstream, 'id' | 'flows' | 'createdAt' | 'lastModified'>) => {
@@ -421,10 +612,8 @@ export default function Home() {
   };
 
   const handleSaveFlow = (flowId: string, nodes: Node[], edges: Edge[]) => {
-    // Save flow data to workstream
-    if (currentFlowWorkstream) {
-      saveWorkstreamFlowData(flowId, nodes, edges);
-    }
+    // This is now handled by handleSaveSubEntityFlow for sub-entity flows
+    console.log('handleSaveFlow called but should use handleSaveSubEntityFlow');
   };
 
   // Workstream flow handlers
@@ -837,6 +1026,14 @@ export default function Home() {
                 onCreateProcess={addProcessToWorkstream}
                 onUpdateProcess={updateProcessInWorkstream}
                 onDeleteProcess={deleteProcessFromWorkstream}
+                onCreateFlowEntity={addFlowEntityToWorkstream}
+                onUpdateFlowEntity={updateFlowEntityInWorkstream}
+                onDeleteFlowEntity={deleteFlowEntityFromWorkstream}
+                onOpenFlow={handleOpenFlow}
+                onDuplicateFlow={handleDuplicateFlowForSubEntity}
+                onDeleteFlow={handleDeleteFlowForSubEntity}
+                onSetFlowAsCurrent={handleSetFlowAsCurrentForSubEntity}
+                onNewFlow={handleNewFlowForSubEntity}
               />
             ) : (
               <div className="p-6 flex-1 overflow-auto">
@@ -863,14 +1060,17 @@ export default function Home() {
           )
         ) : pageMode === 'flow-editor' ? (
           // Flow Editor Mode
-          currentFlow && currentFlowWorkstream ? (
+          currentFlow && currentFlowSubEntity ? (
             <FlowEditor
               flowId={currentFlow.id}
               flowName={currentFlow.name}
-              driverName={currentFlowWorkstream?.name || 'Unknown'}
+              driverName={(currentFlowSubEntity?.entity as any)?.name || 'Unknown'}
               onBack={handleFlowEditorBack}
-              onSave={handleSaveFlow}
-              updateFlow={updateWorkstreamFlow}
+              onSave={handleSaveSubEntityFlow}
+              updateFlow={(flowId: string, updates: Partial<{ name: string; description: string }>) => {
+                // TODO: Implement flow metadata updates for sub-entity flows
+                console.log('Update sub-entity flow metadata:', flowId, updates);
+              }}
               initialNodes={currentFlow.data?.nodes || []}
               initialEdges={currentFlow.data?.edges || []}
               storageStatus={workstreamStorageStatus}

@@ -11,6 +11,7 @@ import {
   FileText,
   HelpCircle,
   Plus,
+  Table,
   Bot,
   Layers,
   Plug,
@@ -30,7 +31,7 @@ interface MainNavigationProps {
 }
 
 export function MainNavigation({ onNavigate }: MainNavigationProps) {
-  const [activeItem, setActiveItem] = useState<string>("workstreams");
+  const [activeItem, setActiveItem] = useState<string>("dashboard");
 
   // Updated navigation items with your requested changes
   const navigationItems: NavigationItem[] = [
@@ -40,6 +41,7 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       icon: <Home className="h-5 w-5" />,
       isActive: activeItem === "dashboard"
     },
+
     {
       id: "workstreams",
       label: "Workstreams",

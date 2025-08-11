@@ -15,16 +15,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { ContactDriver, Campaign, Process } from "@/hooks/useWorkstreams";
-
-type SubEntityData = Omit<ContactDriver | Campaign | Process, 'id' | 'createdAt' | 'lastModified' | 'flows'>;
+import { ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreams";
 
 interface SubEntityDialogProps {
-  subEntityType: 'contact-drivers' | 'campaigns' | 'processes';
-  onCreateSubEntity: (subEntityData: SubEntityData) => void;
-  onUpdateSubEntity?: (id: string, subEntityData: Partial<SubEntityData>) => void;
-  editingSubEntity?: ContactDriver | Campaign | Process | null;
+  subEntityType: 'contact-drivers' | 'campaigns' | 'processes' | 'flows';
+  onCreateSubEntity: (subEntityData: any) => void;
+  onUpdateSubEntity?: (id: string, subEntityData: any) => void;
+  editingSubEntity?: ContactDriver | Campaign | Process | FlowEntity | null;
   onCancelEdit?: () => void;
+  isMetricsMode?: boolean; // New prop to distinguish between basic creation and metrics editing
 }
 
 export function SubEntityDialog({
@@ -33,6 +32,7 @@ export function SubEntityDialog({
   onUpdateSubEntity,
   editingSubEntity,
   onCancelEdit,
+  isMetricsMode = false,
 }: SubEntityDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -74,30 +74,69 @@ export function SubEntityDialog({
   }, [editingSubEntity]);
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      volumePerMonth: 0,
-      avgHandleTime: 0,
-      csat: 0,
-      qaScore: 98,
-      containmentPercentage: 60,
-      containmentVolume: 0,
-      phoneVolume: 0,
-      emailVolume: 0,
-      chatVolume: 0,
-      otherVolume: 0,
-    });
+    if (isMetricsMode) {
+      // In metrics mode, only reset metrics, keep name and description
+      setFormData(prev => ({
+        ...prev,
+        volumePerMonth: 0,
+        avgHandleTime: 0,
+        csat: 0,
+        qaScore: 98,
+        containmentPercentage: 60,
+        containmentVolume: 0,
+        phoneVolume: 0,
+        emailVolume: 0,
+        chatVolume: 0,
+        otherVolume: 0,
+      }));
+    } else {
+      // In creation mode, reset everything to defaults
+      setFormData({
+        name: "",
+        description: "",
+        volumePerMonth: 0,
+        avgHandleTime: 0,
+        csat: 85,
+        qaScore: 95,
+        containmentPercentage: 70,
+        containmentVolume: 0,
+        phoneVolume: 0,
+        emailVolume: 0,
+        chatVolume: 0,
+        otherVolume: 0,
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Calculate containment volume if not set
-    const finalData = {
-      ...formData,
-      containmentVolume: formData.containmentVolume || Math.round(formData.volumePerMonth * (formData.containmentPercentage / 100)),
-    };
+    let finalData;
+    
+    if (isMetricsMode || (isEditing && editingSubEntity)) {
+      // Full metrics data for metrics mode or editing
+      finalData = {
+        ...formData,
+        containmentVolume: formData.containmentVolume || Math.round(formData.volumePerMonth * (formData.containmentPercentage / 100)),
+      };
+    } else {
+      // Minimal data for new entity creation
+      finalData = {
+        name: formData.name,
+        description: formData.description,
+        // Set reasonable defaults for metrics
+        volumePerMonth: 0,
+        avgHandleTime: 0,
+        csat: 85,
+        qaScore: 95,
+        containmentPercentage: 70,
+        containmentVolume: 0,
+        phoneVolume: 0,
+        emailVolume: 0,
+        chatVolume: 0,
+        otherVolume: 0,
+      };
+    }
 
     if (isEditing && editingSubEntity && onUpdateSubEntity) {
       onUpdateSubEntity(editingSubEntity.id, finalData);
@@ -124,6 +163,8 @@ export function SubEntityDialog({
         return 'Campaign';
       case 'processes':
         return 'Process';
+      case 'flows':
+        return 'Flow';
       default:
         return 'Item';
     }
@@ -152,6 +193,13 @@ export function SubEntityDialog({
           avgTime: 'Avg Processing Time (minutes)',
           satisfaction: 'Internal Satisfaction (%)',
         };
+      case 'flows':
+        return {
+          containment: 'Flow Automation',
+          containmentDesc: 'Percentage of automated flow steps',
+          avgTime: 'Avg Flow Time (minutes)',
+          satisfaction: 'Flow Success (%)',
+        };
       default:
         return {
           containment: 'Automation',
@@ -159,6 +207,21 @@ export function SubEntityDialog({
           avgTime: 'Avg Time (minutes)',
           satisfaction: 'Satisfaction (%)',
         };
+    }
+  };
+
+  const getPlaceholderName = () => {
+    switch (subEntityType) {
+      case 'contact-drivers':
+        return 'Account Setup, Password Reset, Billing Question';
+      case 'campaigns':
+        return 'Summer Sale, Product Launch, Re-engagement';
+      case 'processes':
+        return 'Employee Onboarding, Expense Processing, Compliance Check';
+      case 'flows':
+        return 'User Registration, Data Processing, Report Generation';
+      default:
+        return 'Enter a descriptive name';
     }
   };
 
@@ -178,12 +241,16 @@ export function SubEntityDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? `Edit ${displayName}` : `Create New ${displayName}`}
+            {isMetricsMode ? `Edit ${displayName} Metrics` : 
+             isEditing ? `Edit ${displayName}` : 
+             `Create New ${displayName}`}
           </DialogTitle>
           <DialogDescription>
-            {isEditing 
+            {isMetricsMode 
+              ? `Update performance metrics and volume data for this ${displayName.toLowerCase()}.`
+              : isEditing 
               ? `Update the ${displayName.toLowerCase()} details and metrics.`
-              : `Add a new ${displayName.toLowerCase()} with performance metrics and volume data.`
+              : `Give your ${displayName.toLowerCase()} a name and description. You can add performance metrics later from the menu.`
             }
           </DialogDescription>
         </DialogHeader>
@@ -197,9 +264,11 @@ export function SubEntityDialog({
                 </Label>
                 <Input
                   id="name"
+                  placeholder={`e.g., ${getPlaceholderName()}`}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="col-span-3"
+                  autoFocus={!isEditing}
                   required
                 />
               </div>
@@ -209,17 +278,21 @@ export function SubEntityDialog({
                 </Label>
                 <Textarea
                   id="description"
+                  placeholder={`Describe what this ${displayName.toLowerCase()} handles...`}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="col-span-3 min-h-[60px]"
-                  required
+                  rows={3}
                 />
               </div>
             </div>
 
-            {/* KPIs Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 border-t pt-4">Key Performance Indicators</h4>
+            {/* Show metrics only in metrics mode or when editing */}
+            {(isMetricsMode || isEditing) && (
+              <>
+                {/* KPIs Section */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-gray-900 border-t pt-4">Key Performance Indicators</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid grid-cols-4 items-center gap-2">
                   <Label htmlFor="avgHandleTime" className="text-right text-xs">
@@ -373,13 +446,17 @@ export function SubEntityDialog({
                 </div>
               </div>
             </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
             <Button type="submit">
-              {isEditing ? `Update ${displayName}` : `Create ${displayName}`}
+              {isMetricsMode ? `Save Metrics` : 
+               isEditing ? `Update ${displayName}` : 
+               `Create ${displayName}`}
             </Button>
           </DialogFooter>
         </form>

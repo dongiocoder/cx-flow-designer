@@ -63,6 +63,9 @@ class StorageService {
 
                 // TEMP FIX: Always prefer local workstreams data over Gist
                 // This prevents Gist from overriding newly created workstreams
+                console.log('Loading data - localData.workstreams:', localData.workstreams);
+                console.log('Loading data - gistData.workstreams:', gistData.workstreams);
+                
                 mergedData = {
                   contactDrivers: (gistData.contactDrivers && gistData.contactDrivers.length > 0)
                     ? gistData.contactDrivers

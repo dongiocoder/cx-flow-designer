@@ -79,6 +79,26 @@ export interface Process {
   createdAt: string;
 }
 
+export interface FlowEntity {
+  id: string;
+  name: string;
+  description: string;
+  lastModified: string;
+  containmentPercentage: number; // percentage of automated flow steps
+  containmentVolume: number; // actual volume of automated steps
+  volumePerMonth: number;
+  avgHandleTime: number; // in minutes
+  csat: number; // percentage
+  qaScore: number; // percentage
+  // Flow volume breakdown
+  phoneVolume: number;
+  emailVolume: number;
+  chatVolume: number;
+  otherVolume: number;
+  flows: Flow[]; // Canvas workflows within this flow entity
+  createdAt: string;
+}
+
 export interface Workstream {
   id: string;
   name: string;
@@ -97,7 +117,7 @@ export interface Workstream {
   contactDrivers?: ContactDriver[]; // for inbound
   campaigns?: Campaign[]; // for outbound
   processes?: Process[]; // for background
-  flows: Flow[]; // for blank (direct flows) or legacy flows
+  flows: FlowEntity[]; // for blank workstreams - Flow entities (like Contact Drivers)
   createdAt: string;
 }
 
@@ -726,8 +746,66 @@ export function useWorkstreams() {
     ));
   };
 
+  // CRUD operations for FlowEntity (blank workstreams)
+  const addFlowEntityToWorkstream = async (workstreamId: string, flowEntityData: Omit<FlowEntity, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
+    const newFlowEntity: FlowEntity = {
+      id: Date.now().toString(),
+      ...flowEntityData,
+      flows: [],
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString().split('T')[0]
+    };
+
+    const updatedWorkstreams = workstreams.map(workstream => 
+      workstream.id === workstreamId 
+        ? { 
+            ...workstream, 
+            flows: [...workstream.flows, newFlowEntity],
+            lastModified: new Date().toISOString().split('T')[0]
+          }
+        : workstream
+    );
+    setWorkstreams(updatedWorkstreams);
+    
+    try {
+      await storageService.saveWorkstreams(updatedWorkstreams);
+    } catch (error) {
+      console.error('Failed to save new flow entity:', error);
+    }
+    
+    return newFlowEntity;
+  };
+
+  const updateFlowEntityInWorkstream = (workstreamId: string, flowEntityId: string, updates: Partial<FlowEntity>) => {
+    setWorkstreams(prev => prev.map(workstream => 
+      workstream.id === workstreamId
+        ? {
+            ...workstream,
+            flows: workstream.flows.map(flowEntity =>
+              flowEntity.id === flowEntityId
+                ? { ...flowEntity, ...updates, lastModified: new Date().toISOString().split('T')[0] }
+                : flowEntity
+            ),
+            lastModified: new Date().toISOString().split('T')[0]
+          }
+        : workstream
+    ));
+  };
+
+  const deleteFlowEntityFromWorkstream = (workstreamId: string, flowEntityId: string) => {
+    setWorkstreams(prev => prev.map(workstream => 
+      workstream.id === workstreamId
+        ? {
+            ...workstream,
+            flows: workstream.flows.filter(flowEntity => flowEntity.id !== flowEntityId),
+            lastModified: new Date().toISOString().split('T')[0]
+          }
+        : workstream
+    ));
+  };
+
   // Flow operations within sub-entities
-  const addFlowToSubEntity = (workstreamId: string, subEntityId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes', flowData: Omit<Flow, 'id' | 'createdAt' | 'lastModified'>) => {
+  const addFlowToSubEntity = async (workstreamId: string, subEntityId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowData: Omit<Flow, 'id' | 'createdAt' | 'lastModified'>) => {
     const newFlow: Flow = {
       id: `${subEntityId}-${Date.now()}`,
       ...flowData,
@@ -735,11 +813,11 @@ export function useWorkstreams() {
       lastModified: new Date().toISOString().split('T')[0]
     };
 
-    setWorkstreams(prev => prev.map(workstream => 
+    const updatedWorkstreams = workstreams.map(workstream => 
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process) =>
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) =>
               entity.id === subEntityId
                 ? { 
                     ...entity, 
@@ -751,17 +829,50 @@ export function useWorkstreams() {
             lastModified: new Date().toISOString().split('T')[0]
           }
         : workstream
-    ));
+    );
+
+    setWorkstreams(updatedWorkstreams);
+
+    // Save to storage
+    try {
+      await storageService.saveWorkstreams(updatedWorkstreams);
+    } catch (error) {
+      console.error('Failed to save new flow to sub-entity:', error);
+    }
 
     return newFlow;
   };
 
-  const deleteFlowFromSubEntity = (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes', flowId: string) => {
+  const saveFlowDataForSubEntity = (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string, nodes: Node[], edges: Edge[]) => {
     setWorkstreams(prev => prev.map(workstream => 
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process) => ({
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
+              ...entity,
+              flows: entity.flows.map((flow: Flow) => 
+                flow.id === flowId 
+                  ? { 
+                      ...flow, 
+                      data: { nodes, edges },
+                      lastModified: new Date().toISOString().split('T')[0]
+                    }
+                  : flow
+              ),
+              lastModified: new Date().toISOString().split('T')[0]
+            })),
+            lastModified: new Date().toISOString().split('T')[0]
+          }
+        : workstream
+    ));
+  };
+
+  const deleteFlowFromSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string) => {
+    const updatedWorkstreams = workstreams.map(workstream => 
+      workstream.id === workstreamId
+        ? {
+            ...workstream,
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
               ...entity,
               flows: entity.flows.filter((flow: Flow) => flow.id !== flowId),
               lastModified: new Date().toISOString().split('T')[0]
@@ -769,7 +880,73 @@ export function useWorkstreams() {
             lastModified: new Date().toISOString().split('T')[0]
           }
         : workstream
-    ));
+    );
+    
+    setWorkstreams(updatedWorkstreams);
+    await storageService.saveWorkstreams(updatedWorkstreams);
+  };
+
+  const setFlowAsCurrentForSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string) => {
+    const updatedWorkstreams = workstreams.map(workstream => 
+      workstream.id === workstreamId
+        ? {
+            ...workstream,
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: any) => ({
+              ...entity,
+              flows: entity.flows.map((flow: Flow) => ({
+                ...flow,
+                type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
+                version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version,
+                lastModified: new Date().toISOString().split('T')[0]
+              })),
+              lastModified: new Date().toISOString().split('T')[0]
+            })),
+            lastModified: new Date().toISOString().split('T')[0]
+          }
+        : workstream
+    );
+    
+    setWorkstreams(updatedWorkstreams);
+    await storageService.saveWorkstreams(updatedWorkstreams);
+  };
+
+  const duplicateFlowInSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string): Promise<Flow | null> => {
+    let duplicatedFlow: Flow | null = null;
+    
+    const updatedWorkstreams = workstreams.map(workstream => {
+      if (workstream.id === workstreamId) {
+        const updatedSubEntities = (workstream[subEntityType] || []).map((entity: any) => {
+          const flowToDuplicate = entity.flows.find((f: Flow) => f.id === flowId);
+          if (flowToDuplicate) {
+            duplicatedFlow = {
+              ...flowToDuplicate,
+              id: `flow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: `${flowToDuplicate.name} (Copy)`,
+              type: 'draft' as const,
+              version: 'v 1.0',
+              lastModified: new Date().toISOString().split('T')[0]
+            };
+            return {
+              ...entity,
+              flows: [...entity.flows, duplicatedFlow],
+              lastModified: new Date().toISOString().split('T')[0]
+            };
+          }
+          return entity;
+        });
+        
+        return {
+          ...workstream,
+          [subEntityType]: updatedSubEntities,
+          lastModified: new Date().toISOString().split('T')[0]
+        };
+      }
+      return workstream;
+    });
+    
+    setWorkstreams(updatedWorkstreams);
+    await storageService.saveWorkstreams(updatedWorkstreams);
+    return duplicatedFlow;
   };
 
   return {
@@ -804,7 +981,13 @@ export function useWorkstreams() {
     addProcessToWorkstream,
     updateProcessInWorkstream,
     deleteProcessFromWorkstream,
+    addFlowEntityToWorkstream,
+    updateFlowEntityInWorkstream,
+    deleteFlowEntityFromWorkstream,
     addFlowToSubEntity,
-    deleteFlowFromSubEntity
+    deleteFlowFromSubEntity,
+    setFlowAsCurrentForSubEntity,
+    duplicateFlowInSubEntity,
+    saveFlowDataForSubEntity
   };
 }
