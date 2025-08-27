@@ -72,18 +72,18 @@ export function NewWorkstreamDialog({
 }: NewWorkstreamDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'type' | 'form'>('type');
-  const [performanceExpanded, setPerformanceExpanded] = useState(true);
+  const [performanceExpanded, setPerformanceExpanded] = useState(false);
   const [economicsExpanded, setEconomicsExpanded] = useState(false);
   const [formData, setFormData] = useState<WorkstreamFormData>({
     name: '',
     description: '',
     type: 'blank',
-    successDefinition: '',
-    volumePerMonth: 0,
-    successPercentage: 0,
-    agentsAssigned: 0,
-    hoursPerAgentPerMonth: 0,
-    loadedCostPerAgent: 0,
+    successDefinition: 'Task completed successfully',
+    volumePerMonth: 100,
+    successPercentage: 80,
+    agentsAssigned: 1,
+    hoursPerAgentPerMonth: 160,
+    loadedCostPerAgent: 5000,
     automationPercentage: 0
   });
 
@@ -114,18 +114,18 @@ export function NewWorkstreamDialog({
 
   const resetDialog = () => {
     setStep('type');
-    setPerformanceExpanded(true);
+    setPerformanceExpanded(false);
     setEconomicsExpanded(false);
     setFormData({
       name: '',
       description: '',
       type: 'blank',
-      successDefinition: '',
-      volumePerMonth: 0,
-      successPercentage: 0,
-      agentsAssigned: 0,
-      hoursPerAgentPerMonth: 0,
-      loadedCostPerAgent: 0,
+      successDefinition: 'Task completed successfully',
+      volumePerMonth: 100,
+      successPercentage: 80,
+      agentsAssigned: 1,
+      hoursPerAgentPerMonth: 160,
+      loadedCostPerAgent: 5000,
       automationPercentage: 0
     });
   };
@@ -164,15 +164,15 @@ export function NewWorkstreamDialog({
 
     const workstreamData = {
       name: formData.name,
-      description: formData.description,
+      description: formData.description || '',
       type: formData.type,
-      successDefinition: formData.successDefinition || undefined,
-      volumePerMonth: formData.volumePerMonth,
-      successPercentage: formData.successPercentage,
-      agentsAssigned: formData.agentsAssigned || undefined,
-      hoursPerAgentPerMonth: formData.hoursPerAgentPerMonth || undefined,
-      loadedCostPerAgent: formData.loadedCostPerAgent || undefined,
-      automationPercentage: formData.automationPercentage || undefined
+      successDefinition: formData.successDefinition || 'Task completed successfully',
+      volumePerMonth: formData.volumePerMonth || 100,
+      successPercentage: formData.successPercentage || 80,
+      agentsAssigned: formData.agentsAssigned || 1,
+      hoursPerAgentPerMonth: formData.hoursPerAgentPerMonth || 160,
+      loadedCostPerAgent: formData.loadedCostPerAgent || 5000,
+      automationPercentage: formData.automationPercentage || 0
     };
 
     if (isEditing && onUpdateWorkstream && editingWorkstream) {

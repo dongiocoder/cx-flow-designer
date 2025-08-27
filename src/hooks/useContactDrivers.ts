@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { storageService } from '@/lib/storage';
+import { useClient } from '@/contexts/ClientContext';
 
 export interface FlowData {
   nodes: Node[];
@@ -157,17 +158,26 @@ const initialContactDrivers: ContactDriver[] = [
 ];
 
 export function useContactDrivers() {
+  const { currentClient } = useClient();
   const [contactDrivers, setContactDrivers] = useState<ContactDriver[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [storageStatus, setStorageStatus] = useState<'github' | 'localStorage' | 'none'>('none');
+  const [error, setError] = useState<string | null>(null);
+  const [storageStatus, setStorageStatus] = useState<'github' | 'none'>('none');
 
-  // Load contact drivers from storage on mount
+  // Load contact drivers from GitHub Gist on mount
   useEffect(() => {
+    // Don't load if currentClient is not set yet
+    if (!currentClient) {
+      return;
+    }
+    
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const savedDrivers = await storageService.loadData();
+        setError(null);
+        
+        const savedDrivers = await storageService.loadData(currentClient);
         
         if (savedDrivers.length > 0) {
           // Migrate existing data to include new fields if needed
@@ -199,45 +209,56 @@ export function useContactDrivers() {
           });
           setContactDrivers(migratedDrivers);
         } else {
-          // If no saved drivers, use initial data
-          setContactDrivers(initialContactDrivers);
-          // Save initial data to storage
-          await storageService.saveData(initialContactDrivers);
+          // If no saved drivers, just use empty array - don't overwrite existing data
+          setContactDrivers([]);
         }
         
         // Update storage status
         const status = storageService.getStorageStatus();
-        setStorageStatus(status.type);
+        setStorageStatus(status.type as 'github' | 'none');
+        
       } catch (error) {
-        console.error('Failed to load data:', error);
-        // Fallback to initial data
-        setContactDrivers(initialContactDrivers);
-        setStorageStatus('localStorage');
+        console.error('Failed to load contact drivers:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setError(errorMessage);
+        // Only set initial data as fallback if it's a connection issue
+        if (errorMessage.includes('internet connection') || errorMessage.includes('not configured')) {
+          setContactDrivers(initialContactDrivers);
+        }
+        setStorageStatus('none');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [currentClient]); // Reload when client changes
 
-  // Save contact drivers to storage whenever they change
+  // Save contact drivers to GitHub Gist whenever they change
   useEffect(() => {
     if (contactDrivers.length > 0 && !isLoading) {
       const saveData = async () => {
         try {
-          await storageService.saveData(contactDrivers);
+          await storageService.saveData(contactDrivers, currentClient);
           // Update storage status after successful save
           const status = storageService.getStorageStatus();
-          setStorageStatus(status.type);
-        } catch (error) {
-          console.error('Failed to save data:', error);
+          setStorageStatus(status.type as 'github' | 'none');
+          // Clear any previous errors on successful save
+          setError(null);
+        } catch (saveError) {
+          // Only show error if GitHub is properly configured
+          const status = storageService.getStorageStatus();
+          if (status.configured) {
+            console.error('Failed to save contact drivers:', saveError);
+            const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error occurred';
+            setError(errorMessage);
+          }
         }
       };
       
       saveData();
     }
-  }, [contactDrivers, isLoading]);
+  }, [contactDrivers, isLoading, currentClient]); // Include currentClient in deps
 
   const addContactDriver = (driverData: Omit<ContactDriver, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
     const newDriver: ContactDriver = {
@@ -426,6 +447,7 @@ export function useContactDrivers() {
     contactDrivers,
     selectedDrivers,
     isLoading,
+    error,
     storageStatus,
     addContactDriver,
     updateContactDriver,

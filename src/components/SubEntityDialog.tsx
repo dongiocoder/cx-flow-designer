@@ -111,6 +111,11 @@ export function SubEntityDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.name.trim()) {
+      return;
+    }
+    
     let finalData;
     
     if (isMetricsMode || (isEditing && editingSubEntity)) {
@@ -122,8 +127,8 @@ export function SubEntityDialog({
     } else {
       // Minimal data for new entity creation
       finalData = {
-        name: formData.name,
-        description: formData.description,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
         // Set reasonable defaults for metrics
         volumePerMonth: 0,
         avgHandleTime: 0,
@@ -138,15 +143,21 @@ export function SubEntityDialog({
       };
     }
 
-    if (isEditing && editingSubEntity && onUpdateSubEntity) {
-      onUpdateSubEntity(editingSubEntity.id, finalData);
-      if (onCancelEdit) onCancelEdit();
-    } else {
-      onCreateSubEntity(finalData);
+    try {
+      if (isEditing && editingSubEntity && onUpdateSubEntity) {
+        onUpdateSubEntity(editingSubEntity.id, finalData);
+        if (onCancelEdit) onCancelEdit();
+      } else {
+        onCreateSubEntity(finalData);
+      }
+      
+      // Close dialog and reset form
+      setOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error saving sub-entity:', error);
+      // Don't close the dialog if there's an error
     }
-    
-    setOpen(false);
-    resetForm();
   };
 
   const handleCancel = () => {
@@ -228,8 +239,20 @@ export function SubEntityDialog({
   const displayName = getDisplayName();
   const labels = getMetricLabels();
 
+  const handleDialogOpenChange = (newOpen: boolean) => {
+    if (isEditing) {
+      // For editing mode, only allow closing
+      if (!newOpen) {
+        handleCancel();
+      }
+    } else {
+      // For normal creation mode
+      setOpen(newOpen);
+    }
+  };
+
   return (
-    <Dialog open={isEditing || open} onOpenChange={isEditing ? handleCancel : setOpen}>
+    <Dialog open={isEditing || open} onOpenChange={handleDialogOpenChange}>
       {!isEditing && (
         <DialogTrigger asChild>
           <Button>

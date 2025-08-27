@@ -14,28 +14,30 @@ import { FlowEditor } from "@/components/FlowEditor";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { KnowledgeBaseEditor } from "@/components/KnowledgeBaseEditor";
 import { Home as Dashboard } from "@/components/Home";
+import { PerformanceCalculator } from "@/components/PerformanceCalculator";
 import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
 import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
+import { useClient } from "@/contexts/ClientContext";
 
 type PageMode = 'table' | 'flow-editor' | 'knowledge-editor';
-type PageSection = 'workstreams' | 'workstream-detail' | 'knowledge-bases' | 'dashboard' | 'analytics' | 'users' | 'channels' | 'integrations' | 'actions' | 'settings';
+type PageSection = 'workstreams' | 'workstream-detail' | 'knowledge-bases' | 'dashboard' | 'analytics' | 'calculator' | 'users' | 'channels' | 'integrations' | 'actions' | 'settings';
 type SubEntityType = 'contact-drivers' | 'campaigns' | 'processes' | 'flows';
 
 export default function Home() {
-
+  const { currentClient, availableClients, switchClient, createClient } = useClient();
 
   const {
     workstreams,
     selectedWorkstreams,
+    isLoading: workstreamsLoading,
+    error: workstreamsError,
     storageStatus: workstreamStorageStatus,
     addWorkstream,
     updateWorkstream,
     deleteWorkstream,
     deleteSelectedWorkstreams,
     duplicateWorkstream,
-
-
     toggleWorkstreamSelection,
     selectAllWorkstreams,
     clearSelection: clearWorkstreamSelection,
@@ -58,12 +60,15 @@ export default function Home() {
     deleteFlowFromSubEntity,
     setFlowAsCurrentForSubEntity,
     duplicateFlowInSubEntity,
-    saveFlowDataForSubEntity
+    saveFlowDataForSubEntity,
+    updateFlowInSubEntity
   } = useWorkstreams();
 
   const {
     getAssetById,
     updateKnowledgeBaseAsset,
+    isLoading: kbLoading,
+    error: kbError,
     storageStatus: kbStorageStatus
   } = useKnowledgeBaseAssets();
 
@@ -83,35 +88,8 @@ export default function Home() {
   const [currentWorkstreamId, setCurrentWorkstreamId] = useState<string | null>(null);
   const [currentSubEntityType, setCurrentSubEntityType] = useState<SubEntityType | null>(null);
 
-  // Global client picker state
-  const [clients, setClients] = useState<string[]>([]);
-  const [selectedClient, setSelectedClient] = useState<string>("");
+  // Client switching is now handled by ClientContext
 
-  // Initialize clients and selection from localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const storedClientsRaw = localStorage.getItem('cx-client-list');
-    const storedSelected = localStorage.getItem('cx-selected-client');
-    const defaultClients = ["HelloFresh", "Warby Parker"];
-    let initialClients: string[] = defaultClients;
-    try {
-      if (storedClientsRaw) {
-        const parsed = JSON.parse(storedClientsRaw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          initialClients = parsed;
-        }
-      }
-    } catch {
-      // ignore parse errors and fall back to defaults
-    }
-    setClients(initialClients);
-    if (storedSelected && initialClients.includes(storedSelected)) {
-      setSelectedClient(storedSelected);
-    } else {
-      setSelectedClient(initialClients[0] || "");
-      localStorage.setItem('cx-selected-client', initialClients[0] || "");
-    }
-  }, []);
 
   // Initialize and persist current section from localStorage
   useEffect(() => {
@@ -120,7 +98,7 @@ export default function Home() {
     const storedWorkstreamId = localStorage.getItem('cx-current-workstream-id');
     const storedSubEntityType = localStorage.getItem('cx-current-sub-entity-type') as SubEntityType;
     
-    if (storedSection && ['workstreams', 'workstream-detail', 'knowledge-bases', 'dashboard', 'analytics', 'users', 'channels', 'integrations', 'actions', 'settings'].includes(storedSection)) {
+    if (storedSection && ['workstreams', 'workstream-detail', 'knowledge-bases', 'dashboard', 'analytics', 'calculator', 'users', 'channels', 'integrations', 'actions', 'settings'].includes(storedSection)) {
       setCurrentSection(storedSection);
       
       // Restore workstream detail state if needed
@@ -235,28 +213,21 @@ export default function Home() {
     }
   }, [currentSubEntityType]);
 
-  const handleClientChange = (value: string) => {
+  const handleClientChange = async (value: string) => {
     if (value === '__add__') {
       const name = typeof window !== 'undefined' ? window.prompt('Add client name') : null;
       if (name && name.trim()) {
         const newName = name.trim();
-        const updated = Array.from(new Set([...
-          clients,
-          newName
-        ]));
-        setClients(updated);
-        setSelectedClient(newName);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('cx-client-list', JSON.stringify(updated));
-          localStorage.setItem('cx-selected-client', newName);
+        try {
+          await createClient(newName);
+        } catch (error) {
+          console.error('Failed to create client:', error);
+          alert('Failed to create client. Please try again.');
         }
       }
       return;
     }
-    setSelectedClient(value);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cx-selected-client', value);
-    }
+    switchClient(value);
   };
 
 
@@ -469,6 +440,22 @@ export default function Home() {
     saveFlowDataForSubEntity(workstream.id, subEntityType, flowId, nodes, edges);
   };
 
+  // Sub-entity flow metadata update handler
+  const handleUpdateSubEntityFlow = async (flowId: string, updates: Partial<{ name: string; description: string }>) => {
+    if (!currentFlowSubEntity) return;
+    
+    const { workstream } = currentFlowSubEntity;
+    const { type } = currentFlowSubEntity;
+    
+    // Update the flow metadata within the sub-entity
+    const subEntityType = type === 'contactDriver' ? 'contactDrivers' :
+                         type === 'campaign' ? 'campaigns' : 
+                         type === 'process' ? 'processes' : 
+                         type === 'flowEntity' ? 'flows' : 'flows';
+    
+    await updateFlowInSubEntity(workstream.id, subEntityType, flowId, updates);
+  };
+
   // Workstream handlers
   const handleCreateWorkstream = async (workstreamData: Omit<Workstream, 'id' | 'flows' | 'createdAt' | 'lastModified'>) => {
     await addWorkstream(workstreamData);
@@ -629,15 +616,15 @@ export default function Home() {
                     className="flex items-center space-x-1 text-xl font-semibold text-foreground hover:text-foreground/80"
                     aria-label="Select client"
                   >
-                    <span>{selectedClient || 'Select client'}</span>
+                    <span>{currentClient || 'Select client'}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 opacity-70">
                       <path d="m6 9 6 6 6-6" />
                     </svg>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
-                  {clients.map((c) => (
-                    <DropdownMenuItem key={c} onClick={() => handleClientChange(c)}>
+                  {availableClients.map((c) => (
+                    <DropdownMenuItem key={c} onClick={() => switchClient(c)}>
                       {c}
                     </DropdownMenuItem>
                   ))}
@@ -647,15 +634,29 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right side - Avatar with dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shadow-sm">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
+          {/* Right side - Storage status + Avatar */}
+          <div className="flex items-center space-x-3">
+            {/* Storage Status Indicator */}
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                workstreamStorageStatus === 'github' ? 'bg-green-500' : 
+                (workstreamsError && workstreamsError.includes('rate limit')) ? 'bg-orange-500' : 'bg-yellow-500'
+              }`} />
+              <span className="text-xs text-muted-foreground">
+                {workstreamStorageStatus === 'github' ? 'GitHub Repo' : 
+                 (workstreamsError && workstreamsError.includes('rate limit')) ? 'Rate Limited' : 'Local Only'}
+              </span>
+            </div>
+            
+            {/* Avatar dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shadow-sm">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuItem onClick={() => handleMenuItemClick('Profile')}>
                 <User className="mr-2 h-4 w-4" />
@@ -679,6 +680,7 @@ export default function Home() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </header>
 
@@ -686,7 +688,67 @@ export default function Home() {
       <main className={`flex-1 transition-opacity duration-300 ${
         _isWorkstreamDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
       }`}>
-        {pageMode === 'table' ? (
+        {/* Rate Limit Warning */}
+        {((workstreamsError && workstreamsError.includes('rate limit')) || (kbError && kbError.includes('rate limit'))) && (
+          <div className="mx-6 mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-orange-500 rounded-full" />
+              <span className="font-medium text-orange-800">GitHub Rate Limited</span>
+            </div>
+            <p className="text-sm text-orange-700 mt-1">
+              {workstreamsError || kbError}
+            </p>
+            <p className="text-xs text-orange-600 mt-2">
+              Changes are saved locally and will sync automatically when the rate limit resets.
+            </p>
+          </div>
+        )}
+
+        {/* Other GitHub Errors */}
+        {(workstreamsError || kbError) && 
+         workstreamStorageStatus !== 'none' && 
+         !((workstreamsError && workstreamsError.includes('rate limit')) || (kbError && kbError.includes('rate limit'))) && (
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-red-500 rounded-full" />
+              <span className="font-medium text-red-800">GitHub Sync Error</span>
+            </div>
+            <p className="text-sm text-red-700 mt-1">
+              {workstreamsError || kbError}
+            </p>
+            <p className="text-xs text-red-600 mt-2">
+              Please check your internet connection and GitHub token permissions.
+            </p>
+          </div>
+        )}
+
+        {/* Configuration Help - Only show when not configured */}
+        {workstreamStorageStatus === 'none' && (
+          <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-blue-500 rounded-full" />
+              <span className="font-medium text-blue-800">Local Mode</span>
+            </div>
+            <p className="text-sm text-blue-700 mt-1">
+              Data is saved locally only. Configure GitHub Repository for cloud sync.
+            </p>
+            <p className="text-xs text-blue-600 mt-2">
+              Set NEXT_PUBLIC_GITHUB_TOKEN and NEXT_PUBLIC_GITHUB_REPO in your .env.local file.
+            </p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {(workstreamsLoading || kbLoading) && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading data from GitHub Repository...</p>
+            </div>
+          </div>
+        )}
+
+        {pageMode === 'table' && !workstreamsLoading && !kbLoading ? (
           // Table Mode - Different sections
           currentSection === 'dashboard' ? (
             <Dashboard onNavigate={handleNavigationChange} />
@@ -695,6 +757,8 @@ export default function Home() {
               onCreateAsset={handleCreateKnowledgeBaseAsset}
               onEditAsset={handleEditKnowledgeBaseAsset}
             />
+          ) : currentSection === 'calculator' ? (
+            <PerformanceCalculator />
           ) : currentSection === 'workstreams' ? (
             // Workstreams Table Mode
             <div className="p-6 flex-1 overflow-auto">
@@ -1018,7 +1082,7 @@ export default function Home() {
               </div>
             </div>
           )
-        ) : pageMode === 'flow-editor' ? (
+        ) : pageMode === 'flow-editor' && !workstreamsLoading ? (
           // Flow Editor Mode
           currentFlow && currentFlowSubEntity ? (
             <FlowEditor
@@ -1027,10 +1091,7 @@ export default function Home() {
               driverName={(currentFlowSubEntity?.entity as ContactDriver | Campaign | Process | FlowEntity)?.name || 'Unknown'}
               onBack={handleFlowEditorBack}
               onSave={handleSaveSubEntityFlow}
-              updateFlow={(flowId: string, updates: Partial<{ name: string; description: string }>) => {
-                // TODO: Implement flow metadata updates for sub-entity flows
-                console.log('Update sub-entity flow metadata:', flowId, updates);
-              }}
+              updateFlow={handleUpdateSubEntityFlow}
               initialNodes={currentFlow.data?.nodes || []}
               initialEdges={currentFlow.data?.edges || []}
               storageStatus={workstreamStorageStatus}
@@ -1049,7 +1110,7 @@ export default function Home() {
               </div>
             </div>
           )
-        ) : (
+        ) : pageMode === 'knowledge-editor' && !kbLoading ? (
           // Knowledge Base Editor Mode
           currentAsset ? (
             <KnowledgeBaseEditor
@@ -1072,7 +1133,7 @@ export default function Home() {
               </div>
             </div>
           )
-        )}
+        ) : null}
       </main>
 
 

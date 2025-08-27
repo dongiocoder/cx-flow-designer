@@ -2,27 +2,43 @@ import type { ContactDriver } from '@/hooks/useContactDrivers';
 import type { KnowledgeBaseAsset } from '@/hooks/useKnowledgeBaseAssets';
 import type { Workstream } from '@/hooks/useWorkstreams';
 
-const STORAGE_KEY = 'cx-flow-designer-data';
-
 interface AppData {
   contactDrivers: ContactDriver[];
   knowledgeBaseAssets: KnowledgeBaseAsset[];
   workstreams: Workstream[];
 }
-const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
-const GIST_ID = process.env.NEXT_PUBLIC_GIST_ID;
 
-interface GistResponse {
-  files: {
-    [key: string]: {
-      content: string;
-    };
-  };
+// Access environment variables
+const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO;
+
+// Validate required environment variables
+if (!GITHUB_TOKEN || !GITHUB_REPO) {
+  console.warn('⚠️ GitHub storage not configured. Please set NEXT_PUBLIC_GITHUB_TOKEN and NEXT_PUBLIC_GITHUB_REPO environment variables.');
+  console.warn('Token exists:', !!GITHUB_TOKEN);
+  console.warn('Repo exists:', !!GITHUB_REPO);
 }
+
+interface GitHubFileResponse {
+  content: string;
+  sha: string;
+  size: number;
+  encoding: 'base64';
+}
+
 
 class StorageService {
   private isOnline = true;
-  private cachedData: AppData | null = null;
+  private cachedData: Map<string, AppData> = new Map(); // Cache per client
+  private isLoading = false;
+  private hasConfigError = false;
+  private saveTimeout: NodeJS.Timeout | null = null;
+  private lastSaveTime = 0;
+  private isRateLimited = false;
+  private rateLimitResetTime = 0;
+  private lastRequestTime = 0;
+  private requestQueue: Array<() => Promise<unknown>> = [];
+  private isProcessingQueue = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -31,206 +47,403 @@ class StorageService {
       window.addEventListener('online', () => { this.isOnline = true; });
       window.addEventListener('offline', () => { this.isOnline = false; });
     }
+    
+    // Check configuration
+    this.hasConfigError = !GITHUB_TOKEN || !GITHUB_REPO;
   }
 
-  // Load all data (contact drivers + knowledge base assets)
-  async loadAllData(): Promise<AppData> {
-    if (this.cachedData) {
-      return this.cachedData;
+  // Load all data from GitHub Repository (single source of truth)
+  async loadAllData(clientName: string = 'HelloFresh'): Promise<AppData> {
+    // Check configuration dynamically
+    const currentlyConfigured = !!(GITHUB_TOKEN && GITHUB_REPO);
+    
+    // If configuration is missing, return empty data without error
+    if (!currentlyConfigured) {
+      const emptyData: AppData = {
+        contactDrivers: [],
+        knowledgeBaseAssets: [],
+        workstreams: []
+      };
+      return emptyData;
+    }
+
+    // Return cached data if available
+    if (this.cachedData.has(clientName) && !this.isLoading) {
+      return this.cachedData.get(clientName)!;
+    }
+
+    if (!this.isOnline) {
+      throw new Error('No internet connection. Cannot load data from GitHub Repository.');
     }
 
     try {
-      // Try to load from GitHub Gist first if we have credentials and are online
-      if (this.isOnline && GITHUB_TOKEN && GIST_ID) {
-        const gistData = await this.loadFromGist();
-        if (gistData) {
-          // Merge with any existing local data to avoid overwriting
-          // sections that may not yet exist in Gist (e.g., newly added workstreams)
-          let mergedData: AppData = gistData;
-
-          if (typeof window !== 'undefined') {
-            const localRaw = localStorage.getItem(STORAGE_KEY);
-            if (localRaw) {
-              try {
-                const parsed = JSON.parse(localRaw);
-                const localData: AppData = Array.isArray(parsed)
-                  ? { contactDrivers: parsed, knowledgeBaseAssets: [], workstreams: [] }
-                  : {
-                      contactDrivers: parsed.contactDrivers || [],
-                      knowledgeBaseAssets: parsed.knowledgeBaseAssets || [],
-                      workstreams: parsed.workstreams || []
-                    };
-
-                // TEMP FIX: Always prefer local workstreams data over Gist
-                // This prevents Gist from overriding newly created workstreams
-                console.log('Loading data - localData.workstreams:', localData.workstreams);
-                console.log('Loading data - gistData.workstreams:', gistData.workstreams);
-                
-                mergedData = {
-                  contactDrivers: (gistData.contactDrivers && gistData.contactDrivers.length > 0)
-                    ? gistData.contactDrivers
-                    : localData.contactDrivers,
-                  knowledgeBaseAssets: (gistData.knowledgeBaseAssets && gistData.knowledgeBaseAssets.length > 0)
-                    ? gistData.knowledgeBaseAssets
-                    : localData.knowledgeBaseAssets,
-                  workstreams: localData.workstreams, // Always use local workstreams
-                };
-              } catch (e) {
-                console.warn('❌ Failed to parse local data:', e);
-                // If local data can't be parsed, just stick with gist data
-                mergedData = gistData;
-              }
-            }
-
-            // Update localStorage with merged data
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
-          }
-
-          this.cachedData = mergedData;
-          return mergedData;
-        }
+      this.isLoading = true;
+      const repoData = await this.queueRequest(() => this.loadFromRepo(clientName));
+      
+      if (repoData) {
+        this.cachedData.set(clientName, repoData);
+        return repoData;
       }
+      
+      // If no data in repo, return empty structure
+      const emptyData: AppData = {
+        contactDrivers: [],
+        knowledgeBaseAssets: [],
+        workstreams: []
+      };
+      this.cachedData.set(clientName, emptyData);
+      return emptyData;
     } catch (error) {
-      console.warn('Failed to load from GitHub Gist, falling back to localStorage:', error);
-    }
-
-    // Fallback to localStorage
-    if (typeof window !== 'undefined') {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        try {
-          const parsed = JSON.parse(savedData);
-          // Handle both old format (just contact drivers) and new format (combined data)
-          if (Array.isArray(parsed)) {
-            // Old format - just contact drivers
-            const data: AppData = {
-              contactDrivers: parsed,
-              knowledgeBaseAssets: [],
-              workstreams: []
-            };
-            this.cachedData = data;
-            return data;
-          } else {
-            // New format - combined data
-            this.cachedData = parsed;
-            return parsed;
-          }
-        } catch (e) {
-          console.warn('Failed to parse stored data:', e);
-        }
-      }
-
-                // Check for old contact drivers key
-      const oldContactDrivers = localStorage.getItem('cx-contact-drivers');
-      if (oldContactDrivers) {
-        try {
-          const parsed = JSON.parse(oldContactDrivers);
-          const data: AppData = {
-            contactDrivers: Array.isArray(parsed) ? parsed : [],
-            knowledgeBaseAssets: [],
-            workstreams: []
-          };
-          this.cachedData = data;
-          return data;
-        } catch (e) {
-          console.warn('Failed to parse old contact drivers data:', e);
-        }
-      }
-    }
-
-    // Return empty data if nothing is found
-    const emptyData: AppData = {
-      contactDrivers: [],
-      knowledgeBaseAssets: [],
-      workstreams: []
-    };
-    this.cachedData = emptyData;
-    return emptyData;
-  }
-
-  // Save all data
-  async saveAllData(data: AppData): Promise<void> {
-    this.cachedData = data; // Update cache
-
-    try {
-      // Always save to localStorage first (instant backup)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      }
-
-      // Then try to save to GitHub Gist if we have credentials and are online
-      if (this.isOnline && GITHUB_TOKEN && GIST_ID) {
-        await this.saveToGist(data);
-      }
-    } catch (error) {
-      console.warn('Failed to save to GitHub Gist, using localStorage only:', error);
-      // localStorage save already happened above, so we're good
+      console.error('Failed to load from GitHub Repository:', error);
+      throw error;
+    } finally {
+      this.isLoading = false;
     }
   }
 
-  // Backward compatibility methods for contact drivers
-  async saveData(contactDrivers: ContactDriver[]): Promise<void> {
-    const allData = await this.loadAllData();
+  // Save all data to GitHub Repository with debouncing and rate limit handling
+  async saveAllData(data: AppData, clientName: string = 'HelloFresh'): Promise<void> {
+    // Check configuration dynamically
+    const currentlyConfigured = !!(GITHUB_TOKEN && GITHUB_REPO);
+    
+    // If configuration is missing, silently update cache only
+    if (!currentlyConfigured) {
+      this.cachedData.set(clientName, data);
+      return;
+    }
+
+    if (!this.isOnline) {
+      throw new Error('No internet connection. Cannot save data to GitHub Gist.');
+    }
+
+    // Check if we're rate limited
+    if (this.isRateLimited && Date.now() < this.rateLimitResetTime) {
+      // Still rate limited, just update cache
+      this.cachedData.set(clientName, data);
+      const remainingMinutes = Math.ceil((this.rateLimitResetTime - Date.now()) / 60000);
+      throw new Error(`GitHub API rate limit exceeded. Try again in ${remainingMinutes} minutes.`);
+    }
+
+    // Clear any pending save
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+
+    // Update cache immediately
+    this.cachedData.set(clientName, data);
+
+    // Debounce saves to avoid rate limiting (wait 2 seconds)
+    return new Promise((resolve, reject) => {
+      this.saveTimeout = setTimeout(async () => {
+        try {
+          await this.queueRequest(() => this.saveToRepo(data, clientName));
+          this.isRateLimited = false;
+          resolve();
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('rate limit')) {
+            this.isRateLimited = true;
+            this.rateLimitResetTime = Date.now() + (60 * 60 * 1000); // Reset in 1 hour
+          }
+          console.error('Failed to save to GitHub Repository:', error);
+          reject(error);
+        }
+      }, 2000);
+    });
+  }
+
+  // Contact drivers methods
+  async saveData(contactDrivers: ContactDriver[], clientName: string = 'HelloFresh'): Promise<void> {
+    const allData = await this.loadAllData(clientName);
     allData.contactDrivers = contactDrivers;
-    await this.saveAllData(allData);
+    await this.saveAllData(allData, clientName);
   }
 
-  async loadData(): Promise<ContactDriver[]> {
-    const allData = await this.loadAllData();
+  async loadData(clientName: string = 'HelloFresh'): Promise<ContactDriver[]> {
+    const allData = await this.loadAllData(clientName);
     return allData.contactDrivers;
   }
 
-  // New methods for knowledge base assets
-  async saveKnowledgeBaseAssets(assets: KnowledgeBaseAsset[]): Promise<void> {
-    const allData = await this.loadAllData();
+  // Knowledge base assets methods
+  async saveKnowledgeBaseAssets(assets: KnowledgeBaseAsset[], clientName: string = 'HelloFresh'): Promise<void> {
+    const allData = await this.loadAllData(clientName);
     allData.knowledgeBaseAssets = assets;
-    await this.saveAllData(allData);
+    await this.saveAllData(allData, clientName);
   }
 
-  async loadKnowledgeBaseAssets(): Promise<KnowledgeBaseAsset[]> {
-    const allData = await this.loadAllData();
+  async loadKnowledgeBaseAssets(clientName: string = 'HelloFresh'): Promise<KnowledgeBaseAsset[]> {
+    const allData = await this.loadAllData(clientName);
     return allData.knowledgeBaseAssets;
   }
 
-  // New methods for workstreams
-  async saveWorkstreams(workstreams: Workstream[]): Promise<void> {
-    // Clear cache to force fresh load
-    this.cachedData = null;
-    
-    const allData = await this.loadAllData();
+  // Workstreams methods
+  async saveWorkstreams(workstreams: Workstream[], clientName: string = 'HelloFresh'): Promise<void> {
+    const allData = await this.loadAllData(clientName);
     allData.workstreams = workstreams;
-    await this.saveAllData(allData);
+    await this.saveAllData(allData, clientName);
   }
 
-  async loadWorkstreams(): Promise<Workstream[]> {
-    const allData = await this.loadAllData();
+  async loadWorkstreams(clientName: string = 'HelloFresh'): Promise<Workstream[]> {
+    const allData = await this.loadAllData(clientName);
     return allData.workstreams;
   }
 
-  private async saveToGist(data: AppData): Promise<void> {
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-      method: 'PATCH',
+  // Client management methods
+  async loadClients(): Promise<string[]> {
+    try {
+      const clientsFile = await this.queueRequest(() => this.getFileFromRepo('clients.json'));
+      const clientsContent = atob(clientsFile.content);
+      return JSON.parse(clientsContent);
+    } catch {
+      // If clients.json doesn't exist, return default clients
+      return ['HelloFresh', 'Warby Parker'];
+    }
+  }
+
+  async saveClients(clients: string[]): Promise<void> {
+    await this.queueRequest(() => this.saveFileToRepo('clients.json', JSON.stringify(clients, null, 2)));
+  }
+
+  async createClient(clientName: string): Promise<void> {
+    // Create data files with initial sample data for new client
+    const initialData = this.getInitialDataForClient(clientName);
+    
+    await this.saveAllData(initialData, clientName);
+    
+    // Add client to clients list
+    const clients = await this.loadClients();
+    if (!clients.includes(clientName)) {
+      clients.push(clientName);
+      await this.saveClients(clients);
+    }
+  }
+
+  async ensureClientFilesExist(clientName: string): Promise<void> {
+    // Check if client files exist by trying to load them directly from repo
+    try {
+      await this.loadFromRepo(clientName);
+    } catch {
+      // Files don't exist or are corrupted, create initial data
+      console.log(`Creating initial files for client: ${clientName}`);
+      const initialData = this.getInitialDataForClient(clientName);
+      await this.saveToRepo(initialData, clientName);
+    }
+  }
+
+  private getInitialDataForClient(clientName: string): AppData {
+    return {
+      workstreams: [
+        {
+          id: Date.now().toString(),
+          name: "Customer Support",
+          type: "inbound" as const,
+          description: "Handle incoming customer inquiries and support requests",
+          successDefinition: "Issue resolved within 24 hours",
+          volumePerMonth: 500,
+          successPercentage: 85,
+          agentsAssigned: 5,
+          hoursPerAgentPerMonth: 160,
+          loadedCostPerAgent: 4500,
+          automationPercentage: 30,
+          flows: [],
+          lastModified: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString()
+        }
+      ],
+      knowledgeBaseAssets: [
+        {
+          id: Date.now().toString(),
+          name: `${clientName} Support FAQ`,
+          type: "Article" as const,
+          content: `# ${clientName} Support FAQ\n\nThis is a sample FAQ document for ${clientName} customer support...`,
+          dateCreated: new Date().toISOString().split('T')[0],
+          lastModified: new Date().toISOString().split('T')[0],
+          isInternal: false,
+          createdAt: new Date().toISOString()
+        }
+      ],
+      contactDrivers: [
+        {
+          id: Date.now().toString(),
+          name: `${clientName} Account Access`,
+          description: "Customer account access and login issues",
+          lastModified: new Date().toISOString().split('T')[0],
+          containmentPercentage: 75,
+          containmentVolume: 450,
+          volumePerMonth: 600,
+          avgHandleTime: 8.0,
+          csat: 88,
+          qaScore: 95,
+          phoneVolume: 360,
+          emailVolume: 180,
+          chatVolume: 60,
+          otherVolume: 0,
+          flows: [],
+          createdAt: new Date().toISOString()
+        }
+      ]
+    };
+  }
+
+  // Request queue to prevent too many concurrent API calls
+  private async queueRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push(async () => {
+        try {
+          // Rate limit: wait at least 100ms between requests
+          const now = Date.now();
+          const timeSinceLastRequest = now - this.lastRequestTime;
+          if (timeSinceLastRequest < 100) {
+            await new Promise(resolve => setTimeout(resolve, 100 - timeSinceLastRequest));
+          }
+          this.lastRequestTime = Date.now();
+          
+          const result = await requestFn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      this.processQueue();
+    });
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) {
+      return;
+    }
+    
+    this.isProcessingQueue = true;
+    
+    while (this.requestQueue.length > 0) {
+      const request = this.requestQueue.shift();
+      if (request) {
+        try {
+          await request();
+        } catch (error) {
+          console.error('Request failed:', error);
+        }
+      }
+    }
+    
+    this.isProcessingQueue = false;
+  }
+
+  // Clear cache method for forcing fresh data load
+  clearCache(): void {
+    this.cachedData.clear();
+  }
+
+  private async saveToRepo(data: AppData, clientName: string): Promise<void> {
+    const files = [
+      { path: `${clientName}/workstreams.json`, content: JSON.stringify(data.workstreams, null, 2) },
+      { path: `${clientName}/kb-assets.json`, content: JSON.stringify(data.knowledgeBaseAssets, null, 2) },
+      { path: `${clientName}/contact-drivers.json`, content: JSON.stringify(data.contactDrivers, null, 2) }
+    ];
+
+    // Save each file separately
+    for (const file of files) {
+      await this.saveFileToRepo(file.path, file.content);
+    }
+    
+    this.lastSaveTime = Date.now();
+  }
+
+  private async saveFileToRepo(filePath: string, content: string): Promise<void> {
+    // First, try to get the current file to get its SHA (required for updates)
+    let sha: string | undefined;
+    try {
+      const existingFile = await this.getFileFromRepo(filePath);
+      sha = existingFile.sha;
+    } catch {
+      // File doesn't exist, that's OK for new files
+    }
+
+    const body: {
+      message: string;
+      content: string;
+      sha?: string;
+    } = {
+      message: `Update ${filePath}`,
+      content: btoa(unescape(encodeURIComponent(content))), // Base64 encode
+    };
+
+    if (sha) {
+      body.sha = sha; // Required for updates
+    }
+
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'Content-Type': 'application/json',
         'Accept': 'application/vnd.github.v3+json',
       },
-      body: JSON.stringify({
-        files: {
-          'cx-flow-designer-data.json': {
-            content: JSON.stringify(data, null, 2)
-          }
-        }
-      })
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      if (response.status === 403 && errorText.includes('rate limit')) {
+        throw new Error('GitHub API rate limit exceeded. Please wait before making more changes.');
+      }
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
   }
 
-  private async loadFromGist(): Promise<AppData | null> {
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+  private async loadFromRepo(clientName: string): Promise<AppData | null> {
+    try {
+      const [workstreams, kbAssets, contactDrivers] = await Promise.all([
+        this.loadFileFromRepo(`${clientName}/workstreams.json`),
+        this.loadFileFromRepo(`${clientName}/kb-assets.json`),
+        this.loadFileFromRepo(`${clientName}/contact-drivers.json`)
+      ]);
+
+      // Check if any files are missing
+      const hasAnyData = workstreams || kbAssets || contactDrivers;
+      
+      if (!hasAnyData) {
+        // No files exist at all, create initial data
+        console.log(`No files found for client ${clientName}, creating initial data`);
+        const initialData = this.getInitialDataForClient(clientName);
+        await this.saveToRepo(initialData, clientName);
+        return initialData;
+      }
+
+      const parseJSON = <T>(content: string | null): T[] => {
+        if (!content || content.trim() === '' || content.trim() === 'undefined') {
+          return [];
+        }
+        try {
+          return JSON.parse(content);
+        } catch (parseError) {
+          console.error('Failed to parse JSON:', content, parseError);
+          return [];
+        }
+      };
+
+      return {
+        workstreams: parseJSON<Workstream>(workstreams),
+        knowledgeBaseAssets: parseJSON<KnowledgeBaseAsset>(kbAssets),
+        contactDrivers: parseJSON<ContactDriver>(contactDrivers)
+      };
+    } catch (error) {
+      console.warn('Error loading client files:', error);
+      throw error;
+    }
+  }
+
+  private async loadFileFromRepo(filePath: string): Promise<string | null> {
+    try {
+      const fileData = await this.getFileFromRepo(filePath);
+      return atob(fileData.content); // Base64 decode
+    } catch {
+      return null; // File doesn't exist
+    }
+  }
+
+  private async getFileFromRepo(filePath: string): Promise<GitHubFileResponse> {
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`, {
       headers: {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'Accept': 'application/vnd.github.v3+json',
@@ -241,46 +454,50 @@ class StorageService {
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
 
-    const gist: GistResponse = await response.json();
-    const fileContent = gist.files['cx-flow-designer-data.json']?.content;
-    
-    if (fileContent) {
-      const parsed = JSON.parse(fileContent);
-      // Handle both old format (just contact drivers) and new format (combined data)
-      if (Array.isArray(parsed)) {
-        // Old format - just contact drivers
-        return {
-          contactDrivers: parsed,
-          knowledgeBaseAssets: [],
-          workstreams: []
-        };
-      } else {
-        // New format - combined data, ensure all properties exist
-        return {
-          contactDrivers: parsed.contactDrivers || [],
-          knowledgeBaseAssets: parsed.knowledgeBaseAssets || [],
-          workstreams: parsed.workstreams || []
-        };
-      }
-    }
-
-    return null;
+    return await response.json();
   }
 
   // Helper method to check if GitHub integration is available
   isGitHubAvailable(): boolean {
-    return !!(GITHUB_TOKEN && GIST_ID && this.isOnline);
+    return !!(GITHUB_TOKEN && GITHUB_REPO && this.isOnline);
   }
 
   // Helper method to get storage status for UI
-  getStorageStatus(): { type: 'github' | 'localStorage' | 'none', online: boolean } {
-    if (this.isGitHubAvailable()) {
-      return { type: 'github', online: this.isOnline };
+  getStorageStatus(): { type: 'github' | 'none', online: boolean, configured: boolean, rateLimited?: boolean } {
+    // Re-check configuration in case environment variables loaded after initial construction
+    const currentlyConfigured = !!(GITHUB_TOKEN && GITHUB_REPO);
+    const currentlyRateLimited = this.isRateLimited && Date.now() < this.rateLimitResetTime;
+    
+    if (currentlyConfigured && this.isOnline && !currentlyRateLimited) {
+      return { type: 'github', online: true, configured: true, rateLimited: false };
     }
-    if (typeof window !== 'undefined') {
-      return { type: 'localStorage', online: this.isOnline };
+    
+    if (currentlyConfigured && currentlyRateLimited) {
+      return { type: 'none', online: this.isOnline, configured: true, rateLimited: true };
     }
-    return { type: 'none', online: false };
+    
+    return { 
+      type: 'none', 
+      online: this.isOnline, 
+      configured: currentlyConfigured,
+      rateLimited: false
+    };
+  }
+
+  // Method to retry failed operations
+  async retryOperation<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
+    throw new Error('Max retries exceeded');
   }
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { storageService } from '@/lib/storage';
+import { useClient } from '@/contexts/ClientContext';
 
 export interface FlowData {
   nodes: Node[];
@@ -292,17 +293,27 @@ const initialWorkstreams: Workstream[] = [
 ];
 
 export function useWorkstreams() {
+  const { currentClient } = useClient();
   const [workstreams, setWorkstreams] = useState<Workstream[]>([]);
   const [selectedWorkstreams, setSelectedWorkstreams] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [storageStatus, setStorageStatus] = useState<'github' | 'localStorage' | 'none'>('none');
+  const [error, setError] = useState<string | null>(null);
+  const [storageStatus, setStorageStatus] = useState<'github' | 'none'>('none');
+  const [isManualOperation, setIsManualOperation] = useState(false);
 
-  // Load workstreams from storage on mount
+  // Load workstreams from GitHub Gist on mount
   useEffect(() => {
+    // Don't load if currentClient is not set yet
+    if (!currentClient) {
+      return;
+    }
+    
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const savedWorkstreams = await storageService.loadWorkstreams();
+        setError(null);
+        
+        const savedWorkstreams = await storageService.loadWorkstreams(currentClient);
         
         if (savedWorkstreams && savedWorkstreams.length > 0) {
           // Migrate existing data to include new fields if needed
@@ -323,6 +334,10 @@ export function useWorkstreams() {
               automationPercentage: workstream.automationPercentage,
               lastModified: workstream.lastModified,
               createdAt: workstream.createdAt,
+              // Preserve sub-entities
+              contactDrivers: workstream.contactDrivers || [],
+              campaigns: workstream.campaigns || [],
+              processes: workstream.processes || [],
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               flows: workstream.flows ? workstream.flows.map((flow: any) => ({
                 ...flow,
@@ -333,51 +348,61 @@ export function useWorkstreams() {
           });
           setWorkstreams(migratedWorkstreams);
         } else {
-          // If no saved workstreams, use initial data
-          setWorkstreams(initialWorkstreams);
-          // Save initial data to storage
-          try {
-            await storageService.saveWorkstreams(initialWorkstreams);
-          } catch (error) {
-            console.error('Failed to save initial workstreams:', error);
-          }
+          // If no saved workstreams, just use empty array - don't overwrite existing data
+          setWorkstreams([]);
         }
         
         // Update storage status
         const status = storageService.getStorageStatus();
-        setStorageStatus(status.type);
+        setStorageStatus(status.type as 'github' | 'none');
+        
       } catch (error) {
         console.error('Failed to load workstreams data:', error);
-        // Fallback to initial data
-        setWorkstreams(initialWorkstreams);
-        setStorageStatus('localStorage');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setError(errorMessage);
+        // Only set initial data as fallback if it's a connection issue
+        if (errorMessage.includes('internet connection') || errorMessage.includes('not configured')) {
+          setWorkstreams(initialWorkstreams);
+        }
+        setStorageStatus('none');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [currentClient]); // Reload when client changes
 
-  // Save workstreams to storage whenever they change
+  // Save workstreams to GitHub Gist whenever they change
   useEffect(() => {
-    if (workstreams.length > 0 && !isLoading) {
+    if (workstreams.length > 0 && !isLoading && !isManualOperation) {
       const saveData = async () => {
         try {
-          await storageService.saveWorkstreams(workstreams);
+          await storageService.saveWorkstreams(workstreams, currentClient);
           // Update storage status after successful save
           const status = storageService.getStorageStatus();
-          setStorageStatus(status.type);
-        } catch (error) {
-          console.error('Failed to save workstreams data:', error);
+          setStorageStatus(status.type as 'github' | 'none');
+          // Clear any previous errors on successful save
+          setError(null);
+        } catch (saveError) {
+          // Only show error if GitHub is properly configured
+          const status = storageService.getStorageStatus();
+          if (status.configured) {
+            console.error('Failed to save workstreams data:', saveError);
+            const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error occurred';
+            setError(errorMessage);
+          }
         }
       };
       
       saveData();
     }
-  }, [workstreams, isLoading]);
+  }, [workstreams, isLoading, currentClient, isManualOperation]); // Include currentClient and isManualOperation in deps
 
   const addWorkstream = async (workstreamData: Omit<Workstream, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
+    // Set manual operation flag to prevent automatic save
+    setIsManualOperation(true);
+    
     const newWorkstream: Workstream = {
       id: Date.now().toString(),
       ...workstreamData,
@@ -387,15 +412,30 @@ export function useWorkstreams() {
     };
     
     const updatedWorkstreams = [...workstreams, newWorkstream];
-    setWorkstreams(updatedWorkstreams);
     
-    // Immediately save to storage
+    // Optimistic update: Update UI immediately
+    setWorkstreams(updatedWorkstreams);
+    setError(null);
+    
+    // Save to GitHub in the background
     try {
-      await storageService.saveWorkstreams(updatedWorkstreams);
+      await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
       const status = storageService.getStorageStatus();
-      setStorageStatus(status.type);
-    } catch (error) {
-      console.error('Failed to save new workstream:', error);
+      setStorageStatus(status.type as 'github' | 'none');
+    } catch (saveError) {
+      // Only show error if GitHub is properly configured
+      const status = storageService.getStorageStatus();
+      if (status.configured) {
+        console.error('Failed to save new workstream:', saveError);
+        const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error occurred';
+        setError(`Failed to save workstream: ${errorMessage}`);
+        // Rollback optimistic update
+        setWorkstreams(workstreams); // Revert to original state
+        throw saveError; // Re-throw to let UI handle the error
+      }
+    } finally {
+      // Reset manual operation flag
+      setIsManualOperation(false);
     }
     
     return newWorkstream;
@@ -480,7 +520,7 @@ export function useWorkstreams() {
     setWorkstreams(updatedWorkstreams);
     
     try {
-      await storageService.saveWorkstreams(updatedWorkstreams);
+      await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
     } catch (error) {
       console.error('Failed to save new contact driver:', error);
     }
@@ -538,7 +578,7 @@ export function useWorkstreams() {
     setWorkstreams(updatedWorkstreams);
     
     try {
-      await storageService.saveWorkstreams(updatedWorkstreams);
+      await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
     } catch (error) {
       console.error('Failed to save new campaign:', error);
     }
@@ -596,7 +636,7 @@ export function useWorkstreams() {
     setWorkstreams(updatedWorkstreams);
     
     try {
-      await storageService.saveWorkstreams(updatedWorkstreams);
+      await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
     } catch (error) {
       console.error('Failed to save new process:', error);
     }
@@ -654,7 +694,7 @@ export function useWorkstreams() {
     setWorkstreams(updatedWorkstreams);
     
     try {
-      await storageService.saveWorkstreams(updatedWorkstreams);
+      await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
     } catch (error) {
       console.error('Failed to save new flow entity:', error);
     }
@@ -721,7 +761,7 @@ export function useWorkstreams() {
 
     // Save to storage
     try {
-      await storageService.saveWorkstreams(updatedWorkstreams);
+      await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
     } catch (error) {
       console.error('Failed to save new flow to sub-entity:', error);
     }
@@ -753,6 +793,33 @@ export function useWorkstreams() {
     ));
   };
 
+  const updateFlowInSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string, updates: Partial<Pick<Flow, 'name' | 'description'>>) => {
+    const updatedWorkstreams = workstreams.map(workstream => 
+      workstream.id === workstreamId
+        ? {
+            ...workstream,
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => ({
+              ...entity,
+              flows: entity.flows.map((flow: Flow) => 
+                flow.id === flowId 
+                  ? { 
+                      ...flow, 
+                      ...updates,
+                      lastModified: new Date().toISOString().split('T')[0]
+                    }
+                  : flow
+              ),
+              lastModified: new Date().toISOString().split('T')[0]
+            })),
+            lastModified: new Date().toISOString().split('T')[0]
+          }
+        : workstream
+    );
+    
+    setWorkstreams(updatedWorkstreams);
+    await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
+  };
+
   const deleteFlowFromSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string) => {
     const updatedWorkstreams = workstreams.map(workstream => 
       workstream.id === workstreamId
@@ -769,7 +836,7 @@ export function useWorkstreams() {
     );
     
     setWorkstreams(updatedWorkstreams);
-    await storageService.saveWorkstreams(updatedWorkstreams);
+    await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
   };
 
   const setFlowAsCurrentForSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string) => {
@@ -777,23 +844,34 @@ export function useWorkstreams() {
       workstream.id === workstreamId
         ? {
             ...workstream,
-            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => ({
-              ...entity,
-              flows: entity.flows.map((flow: Flow) => ({
-                ...flow,
-                type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
-                version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version,
+            [subEntityType]: (workstream[subEntityType] || []).map((entity: ContactDriver | Campaign | Process | FlowEntity) => {
+              // Only update flows if this entity contains the target flow
+              const hasTargetFlow = entity.flows.some(flow => flow.id === flowId);
+              
+              if (!hasTargetFlow) {
+                // This entity doesn't contain the target flow, leave it unchanged
+                return entity;
+              }
+
+              // This entity contains the target flow, update its flows
+              return {
+                ...entity,
+                flows: entity.flows.map((flow: Flow) => ({
+                  ...flow,
+                  type: flow.id === flowId ? 'current' : (flow.type === 'current' ? 'draft' : flow.type),
+                  version: flow.id === flowId ? `v ${(Math.random() * 10).toFixed(1)}` : flow.version,
+                  lastModified: new Date().toISOString().split('T')[0]
+                })),
                 lastModified: new Date().toISOString().split('T')[0]
-              })),
-              lastModified: new Date().toISOString().split('T')[0]
-            })),
+              };
+            }),
             lastModified: new Date().toISOString().split('T')[0]
           }
         : workstream
     );
     
     setWorkstreams(updatedWorkstreams);
-    await storageService.saveWorkstreams(updatedWorkstreams);
+    await storageService.saveWorkstreams(updatedWorkstreams, currentClient);
   };
 
   const duplicateFlowInSubEntity = async (workstreamId: string, subEntityType: 'contactDrivers' | 'campaigns' | 'processes' | 'flows', flowId: string): Promise<Flow | null> => {
@@ -839,6 +917,7 @@ export function useWorkstreams() {
     workstreams,
     selectedWorkstreams,
     isLoading,
+    error,
     storageStatus,
     addWorkstream,
     updateWorkstream,
@@ -868,6 +947,7 @@ export function useWorkstreams() {
     deleteFlowFromSubEntity,
     setFlowAsCurrentForSubEntity,
     duplicateFlowInSubEntity,
-    saveFlowDataForSubEntity
+    saveFlowDataForSubEntity,
+    updateFlowInSubEntity
   };
 }

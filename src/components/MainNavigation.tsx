@@ -11,7 +11,7 @@ import {
   FileText,
   HelpCircle,
   Plus,
-
+  Calculator,
   Bot,
   Layers,
   Plug,
@@ -59,6 +59,12 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       label: "Analytics",
       icon: <BarChart3 className="h-5 w-5" />,
       isActive: activeItem === "analytics"
+    },
+    {
+      id: "calculator",
+      label: "Performance Calculator",
+      icon: <Calculator className="h-5 w-5" />,
+      isActive: activeItem === "calculator"
     },
     {
       id: "users",

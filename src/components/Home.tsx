@@ -1,9 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
-  Edit, 
   Settings, 
   Mail, 
   MessageCircle, 
@@ -33,76 +31,11 @@ interface HomeProps {
 }
 
 export function Home({ onNavigate }: HomeProps) {
-  // Mock data for now - will be replaced with real data later
-  const clientInfo = {
-    name: "TechCorp Solutions",
-    logo: "/placeholder-logo.png", // We'll add a placeholder
-    status: "Live", // Prospect/Onboarding/Live/Expansion
-    lastUpdated: "2 hours ago",
-    completeness: 85 // percentage
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Live': return 'bg-green-100 text-green-800';
-      case 'Onboarding': return 'bg-blue-100 text-blue-800';
-      case 'Prospect': return 'bg-gray-100 text-gray-800';
-      case 'Expansion': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getCompletenessColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-600';
-    if (percentage >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
 
   return (
     <div className="p-6 flex-1 overflow-auto">
       <div className="space-y-6">
-        {/* Top Bar */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            {/* Left side - Client info */}
-            <div className="flex items-center space-x-4">
-              {/* Client Logo placeholder */}
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                <span className="text-gray-500 font-semibold text-lg">
-                  {clientInfo.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                </span>
-              </div>
-              
-              {/* Client name and status */}
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{clientInfo.name}</h1>
-                <div className="flex items-center space-x-3 mt-1">
-                  <Badge className={getStatusColor(clientInfo.status)}>
-                    {clientInfo.status}
-                  </Badge>
-                  <span className="text-sm text-gray-500">
-                    Updated {clientInfo.lastUpdated}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {/* Right side - Data completeness and actions */}
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="text-sm text-gray-500">Data Completeness</div>
-                <div className={`text-2xl font-bold ${getCompletenessColor(clientInfo.completeness)}`}>
-                  {clientInfo.completeness}%
-                </div>
-              </div>
-              
-              <Button variant="outline" size="sm">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Snapshot
-              </Button>
-            </div>
-          </div>
-        </div>
 
         {/* Card Grid - Responsive layout */}
         <div className="space-y-6">

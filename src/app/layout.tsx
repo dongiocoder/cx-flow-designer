@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { MainNavigation } from "@/components/MainNavigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ClientProvider } from "@/contexts/ClientContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,17 +32,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TooltipProvider>
-          <div className="flex h-screen">
-            {/* Left Navigation */}
-            <aside className="flex-shrink-0 h-full">
-              <MainNavigation />
-            </aside>
-            
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-              {children}
+          <ClientProvider>
+            <div className="flex h-screen">
+              {/* Left Navigation */}
+              <aside className="flex-shrink-0 h-full">
+                <MainNavigation />
+              </aside>
+              
+              {/* Main Content */}
+              <div className="flex-1 flex flex-col min-w-0">
+                {children}
+              </div>
             </div>
-          </div>
+          </ClientProvider>
         </TooltipProvider>
       </body>
     </html>

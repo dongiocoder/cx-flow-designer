@@ -51,6 +51,11 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
   const hasLoadedInitialData = useRef(false);
   const currentFlowId = useRef(flowId);
 
+  // Sync flow name when initialFlowName prop changes
+  useEffect(() => {
+    setFlowName(initialFlowName);
+  }, [initialFlowName]);
+
   // Load initial flow data when flowId or data changes
   useEffect(() => {
     // Reset if this is a different flow
@@ -167,7 +172,7 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [scenarioLens, setScenarioLens] = useState('all');
 
-  const { fitView } = useReactFlow();
+  const { fitView, getViewport } = useReactFlow();
 
   // Create node types with delete and edit functionality
   const nodeTypesWithCallbacks = useMemo(() => ({
@@ -225,11 +230,26 @@ function FlowEditorInner({ flowId, flowName: initialFlowName, driverName, onBack
   };
 
   const handleAddStep = (stepType: string) => {
+    const viewport = getViewport();
+    
+    // Get the actual viewport dimensions (fallback to reasonable defaults)
+    const viewportWidth = window.innerWidth || 800;
+    const viewportHeight = window.innerHeight || 600;
+    
+    // Transform viewport center to canvas coordinates
+    // The viewport gives us the current pan (x, y) and zoom level
+    const canvasCenterX = -viewport.x / viewport.zoom + (viewportWidth / 2) / viewport.zoom;
+    const canvasCenterY = -viewport.y / viewport.zoom + (viewportHeight / 2) / viewport.zoom;
+    
+    // Add some randomness around the viewport center (smaller area for better UX)
+    const randomOffsetX = (Math.random() - 0.5) * 150;
+    const randomOffsetY = (Math.random() - 0.5) * 100;
+    
     const newNode: Node<CustomNodeData> = {
       id: `${Date.now()}`, // Simple ID generation
       position: { 
-        x: Math.random() * 400 + 200, // Random position in center area
-        y: Math.random() * 300 + 200 
+        x: canvasCenterX + randomOffsetX,
+        y: canvasCenterY + randomOffsetY
       },
       data: {
         label: getDefaultLabelForStepType(stepType),

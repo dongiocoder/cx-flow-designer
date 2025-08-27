@@ -197,57 +197,100 @@ export function WorkstreamDetailPage({
     <div className="relative">
     <div className="p-6 flex-1 overflow-auto">
       <div className="space-y-6">
-        {/* Header with breadcrumb */}
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={onBack} className="p-2">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <div className="text-sm text-muted-foreground mb-1">
-              Workstreams &gt; {workstream.name}
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage {displayName.toLowerCase()} for the {workstream.name} workstream
-            </p>
-          </div>
-        </div>
-
         {/* Workstream Context Card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">{workstream.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{workstream.description}</p>
-                <div className="flex items-center space-x-4 mt-3">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    workstream.type === 'inbound' ? 'bg-blue-100 text-blue-800' :
-                    workstream.type === 'outbound' ? 'bg-green-100 text-green-800' :
-                    workstream.type === 'background' ? 'bg-purple-100 text-purple-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {workstream.type.charAt(0).toUpperCase() + workstream.type.slice(1)}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {workstream.volumePerMonth.toLocaleString()} runs/month
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {workstream.successPercentage}% success rate
-                  </span>
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            {/* Header row with navigation, type, title, metrics, and action */}
+            <div className="flex items-center justify-between">
+              {/* Left section: Navigation + Type + Title */}
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={onBack} 
+                  className="p-1 hover:bg-gray-100 rounded-md flex-shrink-0"
+                >
+                  <ArrowLeft className="h-3 w-3 text-gray-500" />
+                </Button>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                  workstream.type === 'inbound' ? 'bg-blue-100 text-blue-800' :
+                  workstream.type === 'outbound' ? 'bg-green-100 text-green-800' :
+                  workstream.type === 'background' ? 'bg-purple-100 text-purple-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {workstream.type === 'background' ? 'Back-Office' : 
+                   workstream.type.charAt(0).toUpperCase() + workstream.type.slice(1)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg font-bold text-gray-900 truncate">{workstream.name}</h1>
+                  <p className="text-sm text-gray-500 truncate">{workstream.description}</p>
                 </div>
               </div>
-              <SubEntityDialog
-                subEntityType={subEntityType}
-                onCreateSubEntity={handleCreateSubEntity}
-                onUpdateSubEntity={handleUpdateSubEntity}
-                editingSubEntity={editingSubEntity}
-                onCancelEdit={() => {
-                  setEditingSubEntity(null);
-                  setIsMetricsMode(false);
-                }}
-                isMetricsMode={isMetricsMode}
-              />
+
+              {/* Center section: Metrics */}
+              <div className="hidden md:flex items-center space-x-6 mx-6">
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Total {displayName}</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {subEntities.length} {subEntities.length === 1 ? 
+                      (subEntityType === 'contact-drivers' ? 'driver' : 
+                       subEntityType === 'campaigns' ? 'campaign' :
+                       subEntityType === 'processes' ? 'process' : 'flow') :
+                      (subEntityType === 'contact-drivers' ? 'drivers' : 
+                       subEntityType === 'campaigns' ? 'campaigns' :
+                       subEntityType === 'processes' ? 'processes' : 'flows')
+                    }
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Monthly Volume</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {subEntities.reduce((total, entity) => total + (entity.volumePerMonth || 0), 0).toLocaleString()} runs
+                  </div>
+                </div>
+              </div>
+
+              {/* Right section: Action button */}
+              <div className="flex-shrink-0">
+                <SubEntityDialog
+                  subEntityType={subEntityType}
+                  onCreateSubEntity={handleCreateSubEntity}
+                  onUpdateSubEntity={handleUpdateSubEntity}
+                  editingSubEntity={editingSubEntity}
+                  onCancelEdit={() => {
+                    setEditingSubEntity(null);
+                    setIsMetricsMode(false);
+                  }}
+                  isMetricsMode={isMetricsMode}
+                />
+              </div>
+            </div>
+
+            {/* Mobile metrics row (visible only on small screens) */}
+            <div className="md:hidden mt-3 pt-3 border-t border-gray-100">
+              <div className="flex justify-around text-center">
+                <div>
+                  <div className="text-xs text-gray-500">Total {displayName}</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {subEntities.length} {subEntities.length === 1 ? 
+                      (subEntityType === 'contact-drivers' ? 'driver' : 
+                       subEntityType === 'campaigns' ? 'campaign' :
+                       subEntityType === 'processes' ? 'process' : 'flow') :
+                      (subEntityType === 'contact-drivers' ? 'drivers' : 
+                       subEntityType === 'campaigns' ? 'campaigns' :
+                       subEntityType === 'processes' ? 'processes' : 'flows')
+                    }
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="text-xs text-gray-500">Monthly Volume</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {subEntities.reduce((total, entity) => total + (entity.volumePerMonth || 0), 0).toLocaleString()} runs
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -271,24 +314,45 @@ export function WorkstreamDetailPage({
 
               {/* Table Rows */}
               {subEntities.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <h4 className="text-lg font-medium text-gray-900">No {displayName.toLowerCase()} yet</h4>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Create your first {subEntityType === 'contact-drivers' ? 'contact driver' : 
-                                      subEntityType === 'campaigns' ? 'campaign' :
-                                      subEntityType === 'processes' ? 'process' : 'flow'} to get started!
-                  </p>
-                  <SubEntityDialog
-                    subEntityType={subEntityType}
-                    onCreateSubEntity={handleCreateSubEntity}
-                    onUpdateSubEntity={handleUpdateSubEntity}
-                    editingSubEntity={editingSubEntity}
-                    onCancelEdit={() => {
-                      setEditingSubEntity(null);
-                      setIsMetricsMode(false);
-                    }}
-                    isMetricsMode={isMetricsMode}
-                  />
+                <div className="text-center py-16 px-6">
+                  <div className="mx-auto max-w-sm">
+                    <div className="rounded-full bg-gray-100 p-3 mx-auto w-16 h-16 flex items-center justify-center mb-6">
+                      <svg 
+                        className="w-8 h-8 text-gray-400" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor" 
+                        strokeWidth={1.5}
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          d="M12 4.5v15m7.5-7.5h-15" 
+                        />
+                      </svg>
+                    </div>
+                    <h4 className="text-xl font-semibold text-gray-900 mb-2">
+                      No {displayName.toLowerCase()} yet
+                    </h4>
+                    <p className="text-base text-gray-500 mb-8 leading-relaxed">
+                      Create your first {subEntityType === 'contact-drivers' ? 'contact driver' : 
+                                        subEntityType === 'campaigns' ? 'campaign' :
+                                        subEntityType === 'processes' ? 'process' : 'flow'} to get started with this workstream.
+                    </p>
+                    <div className="flex justify-center">
+                      <SubEntityDialog
+                        subEntityType={subEntityType}
+                        onCreateSubEntity={handleCreateSubEntity}
+                        onUpdateSubEntity={handleUpdateSubEntity}
+                        editingSubEntity={editingSubEntity}
+                        onCancelEdit={() => {
+                          setEditingSubEntity(null);
+                          setIsMetricsMode(false);
+                        }}
+                        isMetricsMode={isMetricsMode}
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 subEntities.map((entity) => {

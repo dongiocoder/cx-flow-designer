@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { storageService } from '@/lib/storage';
+import { useClient } from '@/contexts/ClientContext';
 
 // Knowledge base asset types
 export const KNOWLEDGE_BASE_TYPES = [
@@ -69,60 +70,80 @@ const initialKnowledgeBaseAssets: KnowledgeBaseAsset[] = [
 ];
 
 export function useKnowledgeBaseAssets() {
+  const { currentClient } = useClient();
   const [knowledgeBaseAssets, setKnowledgeBaseAssets] = useState<KnowledgeBaseAsset[]>([]);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [storageStatus, setStorageStatus] = useState<'github' | 'localStorage' | 'none'>('none');
+  const [error, setError] = useState<string | null>(null);
+  const [storageStatus, setStorageStatus] = useState<'github' | 'none'>('none');
 
-  // Load knowledge base assets from storage on mount
+  // Load knowledge base assets from GitHub Gist on mount
   useEffect(() => {
+    // Don't load if currentClient is not set yet
+    if (!currentClient) {
+      return;
+    }
+    
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const savedAssets = await storageService.loadKnowledgeBaseAssets();
+        setError(null);
+        
+        const savedAssets = await storageService.loadKnowledgeBaseAssets(currentClient);
         
         if (savedAssets.length > 0) {
           setKnowledgeBaseAssets(savedAssets);
         } else {
-          // If no saved assets, use initial data
-          setKnowledgeBaseAssets(initialKnowledgeBaseAssets);
-          // Save initial data to storage
-          await storageService.saveKnowledgeBaseAssets(initialKnowledgeBaseAssets);
+          // If no saved assets, just use empty array - don't overwrite existing data
+          setKnowledgeBaseAssets([]);
         }
         
         // Update storage status
         const status = storageService.getStorageStatus();
-        setStorageStatus(status.type);
+        setStorageStatus(status.type as 'github' | 'none');
+        
       } catch (error) {
         console.error('Failed to load knowledge base assets:', error);
-        // Fallback to initial data
-        setKnowledgeBaseAssets(initialKnowledgeBaseAssets);
-        setStorageStatus('localStorage');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setError(errorMessage);
+        // Only set initial data as fallback if it's a connection issue
+        if (errorMessage.includes('internet connection') || errorMessage.includes('not configured')) {
+          setKnowledgeBaseAssets(initialKnowledgeBaseAssets);
+        }
+        setStorageStatus('none');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [currentClient]); // Reload when client changes
 
-  // Save knowledge base assets to storage whenever they change
+  // Save knowledge base assets to GitHub Gist whenever they change
   useEffect(() => {
     if (knowledgeBaseAssets.length > 0 && !isLoading) {
       const saveData = async () => {
         try {
-          await storageService.saveKnowledgeBaseAssets(knowledgeBaseAssets);
+          await storageService.saveKnowledgeBaseAssets(knowledgeBaseAssets, currentClient);
           // Update storage status after successful save
           const status = storageService.getStorageStatus();
-          setStorageStatus(status.type);
-        } catch (error) {
-          console.error('Failed to save knowledge base assets:', error);
+          setStorageStatus(status.type as 'github' | 'none');
+          // Clear any previous errors on successful save
+          setError(null);
+        } catch (saveError) {
+          // Only show error if GitHub is properly configured
+          const status = storageService.getStorageStatus();
+          if (status.configured) {
+            console.error('Failed to save knowledge base assets:', saveError);
+            const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error occurred';
+            setError(errorMessage);
+          }
         }
       };
       
       saveData();
     }
-  }, [knowledgeBaseAssets, isLoading]);
+  }, [knowledgeBaseAssets, isLoading, currentClient]); // Include currentClient in deps
 
   const addKnowledgeBaseAsset = async (assetData: {
     name: string;
@@ -142,15 +163,19 @@ export function useKnowledgeBaseAssets() {
     };
     
     const updatedAssets = [...knowledgeBaseAssets, newAsset];
-    setKnowledgeBaseAssets(updatedAssets);
     
-    // Immediately save to storage
+    // Save to GitHub Gist immediately
     try {
-      await storageService.saveKnowledgeBaseAssets(updatedAssets);
+      await storageService.saveKnowledgeBaseAssets(updatedAssets, currentClient);
+      setKnowledgeBaseAssets(updatedAssets);
       const status = storageService.getStorageStatus();
-      setStorageStatus(status.type);
-    } catch (error) {
-      console.error('Failed to save new knowledge base asset:', error);
+      setStorageStatus(status.type as 'github' | 'none');
+      setError(null);
+    } catch (saveError) {
+      console.error('Failed to save new knowledge base asset:', saveError);
+      const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error occurred';
+      setError(`Failed to save asset: ${errorMessage}`);
+      throw saveError; // Re-throw to let UI handle the error
     }
     
     return newAsset;
@@ -217,6 +242,7 @@ export function useKnowledgeBaseAssets() {
     knowledgeBaseAssets,
     selectedAssets,
     isLoading,
+    error,
     storageStatus,
     addKnowledgeBaseAsset,
     updateKnowledgeBaseAsset,

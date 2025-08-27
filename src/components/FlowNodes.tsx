@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position } from '@xyflow/react';
-import { Play, CheckCircle, AlertTriangle, Bot, Phone, Mail, MessageCircle, User, Settings, Target, Globe, HelpCircle, Video, MessageSquare, UserCheck, Search, ClipboardCheck, BarChart3, ChevronDown } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, Bot, Phone, Mail, MessageCircle, User, Settings, Target, Globe, HelpCircle, Video, MessageSquare, UserCheck, Search, ClipboardCheck, BarChart3, ChevronDown, Heart, CircleDot, Clock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Node data interface
@@ -45,10 +45,14 @@ const STEP_TYPE_PRESETS = {
   'agent': [
     { value: 'greeting', label: 'Greeting', icon: User },
     { value: 'verification', label: 'Verification', icon: UserCheck },
+    { value: 'empathy', label: 'Empathy', icon: Heart },
     { value: 'diagnosis', label: 'Diagnosis', icon: Search },
+    { value: 'hold', label: 'Hold', icon: Clock },
     { value: 'resolution', label: 'Resolution', icon: ClipboardCheck },
+    { value: 'reply', label: 'Reply', icon: Mail },
     { value: 'survey', label: 'Survey', icon: BarChart3 },
     { value: 'escalation', label: 'Escalation', icon: AlertTriangle },
+    { value: 'pre-closing', label: 'Pre-closing', icon: CircleDot },
     { value: 'closing', label: 'Closing', icon: CheckCircle }
   ],
   'outcome': [
@@ -103,10 +107,14 @@ const getStepIcon = (stepType: string): any => {
     video: Video,
     greeting: User,
     verification: UserCheck,
+    empathy: Heart,
     diagnosis: Search,
+    hold: Clock,
     resolution: ClipboardCheck,
+    reply: Mail,
     survey: BarChart3,
     escalation: AlertTriangle,
+    'pre-closing': CircleDot,
     closing: CheckCircle,
     resolved: CheckCircle,
     'csat-sent': BarChart3,
@@ -652,51 +660,60 @@ export function RouterNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) 
     }
   };
 
+  const handleDescriptionChange = (newDescription: string) => {
+    if (onNodeEdit) {
+      onNodeEdit(id, { description: newDescription });
+    }
+  };
+
   return (
     <div 
       className={`
-        relative bg-white rounded border border-orange-300 min-w-[120px] max-w-[150px] group
-        shadow-sm hover:shadow transition-all duration-200
+        relative bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border-2 border-orange-300 
+        min-w-[140px] max-w-[180px] group shadow-sm hover:shadow-md transition-all duration-200
       `}
     >
-      <div className="p-1.5">
-        <div className="flex items-center space-x-1 mb-1">
-          <Target className="w-2.5 h-2.5 text-orange-600" />
+      <div className="p-2">
+        {/* Header with icon and title */}
+        <div className="flex items-center space-x-1 mb-2">
+          <div className="p-1 bg-orange-200 rounded-full">
+            <Target className="w-3 h-3 text-orange-700" />
+          </div>
           <EditableText
             value={data.label || 'Router'}
             onChange={handleLabelChange}
-            className="font-medium text-gray-900 flex-1"
-            style={{ fontSize: '10px' }}
+            className="font-semibold text-orange-900 flex-1"
+            style={{ fontSize: '11px' }}
             placeholder="Router name..."
           />
         </div>
         
-        {/* Rule stack visualization */}
-        <div className="space-y-0.5">
-          <div className="h-1 bg-orange-100 rounded flex items-center px-0.5">
-            <span className="text-orange-700 leading-none" style={{ fontSize: '8px' }}>Rule 1</span>
-          </div>
-          <div className="h-1 bg-orange-100 rounded flex items-center px-0.5">
-            <span className="text-orange-700 leading-none" style={{ fontSize: '8px' }}>Rule 2</span>
-          </div>
-          <div className="h-1 bg-orange-100 rounded flex items-center px-0.5">
-            <span className="text-orange-700 leading-none" style={{ fontSize: '8px' }}>+3 more</span>
-          </div>
+        {/* Routing conditions text area */}
+        <div className="bg-white/70 rounded-md border border-orange-200 p-1.5">
+          <div className="text-xs text-orange-700 font-medium mb-1">Routing Conditions:</div>
+          <EditableText
+            value={data.description || 'Click to add conditions...'}
+            onChange={handleDescriptionChange}
+            className="text-orange-800 block w-full leading-tight"
+            style={{ fontSize: '9px' }}
+            placeholder="e.g., If priority = high → escalate, If region = US → team A..."
+            multiline
+          />
         </div>
       </div>
 
       {/* Delete button - appears on hover */}
       {onDelete && (
         <button
-          className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 text-white rounded-full 
+          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full 
                      opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                     flex items-center justify-center hover:bg-red-600 z-10"
+                     flex items-center justify-center hover:bg-red-600 z-10 shadow-sm"
           onClick={(e) => {
             e.stopPropagation();
             onDelete(id);
           }}
           title="Delete node"
-          style={{ fontSize: '8px' }}
+          style={{ fontSize: '10px' }}
         >
           ×
         </button>
@@ -707,30 +724,44 @@ export function RouterNode({ data, id, onDelete, onNodeEdit }: CustomNodeProps) 
         type="target"
         position={Position.Top}
         id="top"
-        className="w-1.5 h-1.5 border border-white bg-orange-400 hover:bg-orange-600"
+        className="w-2 h-2 border-2 border-white bg-orange-400 hover:bg-orange-600 rounded-full"
       />
       
-      {/* Multiple source handles for different rules */}
+      {/* Multiple source handles for different routing paths */}
       <Handle
         type="source"
         position={Position.Bottom}
-        id="rule1"
-        className="w-1.5 h-1.5 border border-white bg-orange-400 hover:bg-orange-600"
-        style={{ left: '25%' }}
+        id="path1"
+        className="w-2 h-2 border-2 border-white bg-orange-400 hover:bg-orange-600 rounded-full"
+        style={{ left: '20%' }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="rule2"
-        className="w-1.5 h-1.5 border border-white bg-orange-400 hover:bg-orange-600"
+        id="path2"
+        className="w-2 h-2 border-2 border-white bg-orange-400 hover:bg-orange-600 rounded-full"
         style={{ left: '50%' }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="rule3"
-        className="w-1.5 h-1.5 border border-white bg-orange-400 hover:bg-orange-600"
-        style={{ left: '75%' }}
+        id="path3"
+        className="w-2 h-2 border-2 border-white bg-orange-400 hover:bg-orange-600 rounded-full"
+        style={{ left: '80%' }}
+      />
+      
+      {/* Side handles for additional connections */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="w-2 h-2 border-2 border-white bg-orange-400 hover:bg-orange-600 rounded-full"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        className="w-2 h-2 border-2 border-white bg-orange-400 hover:bg-orange-600 rounded-full"
       />
     </div>
   );
