@@ -76,15 +76,15 @@ export function Settings({ className }: SettingsProps) {
       {/* Settings Navigation Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0">
         <div className="p-6">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Settings</h2>
-          <nav className="space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
+          <nav className="space-y-1">
             {settingsNavItems.map((item) => {
               const IconComponent = item.icon;
               return (
                 <Button
                   key={item.id}
                   variant={activeSection === item.id ? "default" : "ghost"}
-                  className="w-full justify-start h-auto p-4"
+                  className="w-full justify-start h-auto p-3"
                   onClick={() => setActiveSection(item.id)}
                 >
                   <div className="flex items-start space-x-3">

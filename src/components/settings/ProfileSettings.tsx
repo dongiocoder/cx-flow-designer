@@ -43,8 +43,8 @@ export function ProfileSettings() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage your personal information and preferences.</p>
+        <h2 className="text-2xl font-medium text-gray-900">Profile</h2>
+        <p className="text-muted-foreground mt-1">Manage your personal information and preferences.</p>
       </div>
 
       {/* Profile Picture Section */}

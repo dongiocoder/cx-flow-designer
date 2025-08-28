@@ -129,8 +129,8 @@ export function IntegrationsSettings() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
-        <p className="text-muted-foreground mt-2">Connect external services and manage API access.</p>
+        <h2 className="text-2xl font-medium text-gray-900">Integrations</h2>
+        <p className="text-muted-foreground mt-1">Connect external services and manage API access.</p>
       </div>
 
       <Tabs defaultValue="connected" className="space-y-4">

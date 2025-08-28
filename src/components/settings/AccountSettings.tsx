@@ -45,8 +45,8 @@ export function AccountSettings() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage your account preferences and security settings.</p>
+        <h2 className="text-2xl font-medium text-gray-900">Account</h2>
+        <p className="text-muted-foreground mt-1">Manage your account preferences and security settings.</p>
       </div>
 
       {/* Client Management Section */}
