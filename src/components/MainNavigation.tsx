@@ -8,8 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { 
   Home, 
   Settings, 
-  BarChart3, 
-  Users, 
   FileText,
   HelpCircle,
   Plus,

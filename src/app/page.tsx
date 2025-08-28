@@ -24,7 +24,7 @@ type PageSection = 'workstreams' | 'workstream-detail' | 'knowledge-bases' | 'da
 type SubEntityType = 'contact-drivers' | 'campaigns' | 'processes' | 'flows';
 
 export default function Home() {
-  const { currentClient, availableClients, switchClient, createClient } = useClient();
+  const { } = useClient();
 
   const {
     workstreams,
