@@ -207,53 +207,6 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
           </TooltipContent>
         </Tooltip>
 
-        {/* Account/Client Selector */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-12 h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <Building2 className="h-5 w-5" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Select Account</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground mb-4">
-                    Current: {currentClient || 'No account selected'}
-                  </div>
-                  {availableClients.map((client) => (
-                    <Button
-                      key={client}
-                      variant={client === currentClient ? "default" : "ghost"}
-                      className="w-full justify-start"
-                      onClick={() => switchClient(client)}
-                    >
-                      {client}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => handleClientChange('__add__')}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Account
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Account</p>
-          </TooltipContent>
-        </Tooltip>
 
         {/* User Profile */}
         <Tooltip>
@@ -277,10 +230,42 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
                   <CreditCard className="mr-2 h-4 w-4" />
                   Billing
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleMenuItemClick('Account')}>
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Account
-                </DropdownMenuItem>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Building2 className="mr-2 h-4 w-4" />
+                      Switch Account
+                    </DropdownMenuItem>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Select Account</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground mb-4">
+                        Current: {currentClient || 'No account selected'}
+                      </div>
+                      {availableClients.map((client) => (
+                        <Button
+                          key={client}
+                          variant={client === currentClient ? "default" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => switchClient(client)}
+                        >
+                          {client}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleClientChange('__add__')}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Account
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <DropdownMenuItem onClick={() => handleMenuItemClick('Tools')}>
                   <Wrench className="mr-2 h-4 w-4" />
                   Tools
