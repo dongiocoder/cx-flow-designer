@@ -14,6 +14,7 @@ import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { KnowledgeBaseEditor } from "@/components/KnowledgeBaseEditor";
 import { Home as Dashboard } from "@/components/Home";
 import { PerformanceCalculator } from "@/components/PerformanceCalculator";
+import { Settings } from "@/components/Settings";
 import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
 import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
@@ -644,6 +645,8 @@ export default function Home() {
             />
           ) : currentSection === 'calculator' ? (
             <PerformanceCalculator />
+          ) : currentSection === 'settings' ? (
+            <Settings />
           ) : currentSection === 'workstreams' ? (
             // Workstreams Table Mode
             <div className="p-6 flex-1">
