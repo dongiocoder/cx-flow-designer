@@ -33,7 +33,7 @@ interface HomeProps {
 export function Home({ onNavigate }: HomeProps) {
 
   return (
-    <div className="p-6 flex-1 overflow-auto">
+    <div className="p-6 flex-1">
       <div className="space-y-6">
 
 

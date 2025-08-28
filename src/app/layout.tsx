@@ -33,14 +33,14 @@ export default function RootLayout({
       >
         <TooltipProvider>
           <ClientProvider>
-            <div className="flex h-screen">
-              {/* Left Navigation */}
-              <aside className="flex-shrink-0 h-full">
+            <div className="flex h-screen overflow-hidden">
+              {/* Left Navigation - Fixed */}
+              <aside className="flex-shrink-0 h-full overflow-hidden">
                 <MainNavigation />
               </aside>
               
-              {/* Main Content */}
-              <div className="flex-1 flex flex-col min-w-0">
+              {/* Main Content - Scrollable */}
+              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {children}
               </div>
             </div>

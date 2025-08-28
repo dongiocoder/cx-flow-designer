@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Detailed Docs
+
+For detailed info and instructions, check the architecture.md file
+
 ## Project Overview
 
 This is a Next.js 15 React application called "CX Flow Designer" - a customer experience workstream management tool with flow visualization capabilities. The application features two main modes:

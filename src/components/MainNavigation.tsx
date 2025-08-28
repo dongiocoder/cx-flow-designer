@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Home, 
   Settings, 
@@ -16,8 +18,16 @@ import {
   Layers,
   Plug,
   Zap,
-  Workflow
+  Workflow,
+  Building2,
+  User,
+  LogOut,
+  CreditCard,
+  Wrench
 } from "lucide-react";
+import { useClient } from "@/contexts/ClientContext";
+import { useWorkstreams } from "@/hooks/useWorkstreams";
+import { Logo } from "./Logo";
 
 interface NavigationItem {
   id: string;
@@ -32,8 +42,10 @@ interface MainNavigationProps {
 
 export function MainNavigation({ onNavigate }: MainNavigationProps) {
   const [activeItem, setActiveItem] = useState<string>("dashboard");
+  const { currentClient, availableClients, switchClient, createClient } = useClient();
+  const { storageStatus, error: workstreamsError } = useWorkstreams();
 
-  // Updated navigation items with your requested changes
+  // Updated navigation items with reduced set
   const navigationItems: NavigationItem[] = [
     {
       id: "dashboard",
@@ -41,7 +53,6 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       icon: <Home className="h-5 w-5" />,
       isActive: activeItem === "dashboard"
     },
-
     {
       id: "workstreams",
       label: "Workstreams",
@@ -55,22 +66,10 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
       isActive: activeItem === "flows"
     },
     {
-      id: "analytics",
-      label: "Analytics",
-      icon: <BarChart3 className="h-5 w-5" />,
-      isActive: activeItem === "analytics"
-    },
-    {
       id: "calculator",
       label: "Performance Calculator",
       icon: <Calculator className="h-5 w-5" />,
       isActive: activeItem === "calculator"
-    },
-    {
-      id: "users",
-      label: "Users",
-      icon: <Users className="h-5 w-5" />,
-      isActive: activeItem === "users"
     },
     {
       id: "knowledge-bases",
@@ -112,17 +111,43 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
     window.dispatchEvent(new CustomEvent('navigation-change', { detail: itemId }));
   };
 
+  const handleClientChange = async (value: string) => {
+    if (value === '__add__') {
+      const name = typeof window !== 'undefined' ? window.prompt('Add client name') : null;
+      if (name && name.trim()) {
+        const newName = name.trim();
+        try {
+          await createClient(newName);
+        } catch (error) {
+          console.error('Failed to create client:', error);
+          alert('Failed to create client. Please try again.');
+        }
+      }
+      return;
+    }
+    switchClient(value);
+  };
+
+  const handleMenuItemClick = (item: string) => {
+    // TODO: Implement modal dialogs for each menu item
+    console.log(`Opening ${item} modal`);
+  };
+
   return (
     <div className="w-16 h-full bg-white border-r border-gray-200 flex flex-col">
-      {/* Empty logo area - properly aligned with header */}
-      <div className="border-b bg-white flex-shrink-0">
-        <div className="h-16">
-          {/* Empty space reserved for future logo */}
-        </div>
-      </div>
-
-      {/* Navigation Items - Moved down */}
+      {/* Navigation Items including logo */}
       <nav className="flex-1 px-2 py-4 space-y-2">
+        {/* Logo as first menu item */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <Logo onClick={() => handleItemClick("dashboard")} />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Home</p>
+          </TooltipContent>
+        </Tooltip>
         {navigationItems.map((item) => (
           <Tooltip key={item.id}>
             <TooltipTrigger asChild>
@@ -146,24 +171,8 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
         ))}
       </nav>
 
-      {/* Bottom section - Help and Add */}
+      {/* Bottom section - Help, Status, Account, User */}
       <div className="px-2 py-4 space-y-2 border-t border-gray-200">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-12 h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              onClick={() => handleItemClick("add")}
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Add New</p>
-          </TooltipContent>
-        </Tooltip>
-
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -177,6 +186,116 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
           </TooltipTrigger>
           <TooltipContent side="right">
             <p>Help & Support</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Service Status Indicator */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-12 h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 relative"
+            >
+              <div className={`w-3 h-3 rounded-full ${
+                storageStatus === 'github' ? 'bg-green-500' : 
+                (workstreamsError && workstreamsError.includes('rate limit')) ? 'bg-orange-500' : 'bg-yellow-500'
+              }`} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{storageStatus === 'github' ? 'GitHub Connected' : 
+               (workstreamsError && workstreamsError.includes('rate limit')) ? 'Rate Limited' : 'Local Only'}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Account/Client Selector */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-12 h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <Building2 className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Select Account</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground mb-4">
+                    Current: {currentClient || 'No account selected'}
+                  </div>
+                  {availableClients.map((client) => (
+                    <Button
+                      key={client}
+                      variant={client === currentClient ? "default" : "ghost"}
+                      className="w-full justify-start"
+                      onClick={() => switchClient(client)}
+                    >
+                      {client}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => handleClientChange('__add__')}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Account
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Account</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* User Profile */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-12 h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" side="right">
+                <DropdownMenuItem onClick={() => handleMenuItemClick('Profile')}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMenuItemClick('Billing')}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Billing
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMenuItemClick('Account')}>
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Account
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMenuItemClick('Tools')}>
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Tools
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMenuItemClick('Log out')}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>User Profile</p>
           </TooltipContent>
         </Tooltip>
       </div>

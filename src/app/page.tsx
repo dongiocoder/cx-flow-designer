@@ -3,8 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-// Using DropdownMenu for a borderless, text-style client selector
-import { User, LogOut, MoreHorizontal, Trash2, Copy, Edit, CreditCard, Building2, Wrench } from "lucide-react";
+import { MoreHorizontal, Trash2, Copy, Edit } from "lucide-react";
 
 import { useWorkstreams, type Workstream, type ContactDriver, type Campaign, type Process, type FlowEntity } from "@/hooks/useWorkstreams";
 import { NewWorkstreamDialog } from "@/components/NewWorkstreamDialog";
@@ -213,22 +212,6 @@ export default function Home() {
     }
   }, [currentSubEntityType]);
 
-  const handleClientChange = async (value: string) => {
-    if (value === '__add__') {
-      const name = typeof window !== 'undefined' ? window.prompt('Add client name') : null;
-      if (name && name.trim()) {
-        const newName = name.trim();
-        try {
-          await createClient(newName);
-        } catch (error) {
-          console.error('Failed to create client:', error);
-          alert('Failed to create client. Please try again.');
-        }
-      }
-      return;
-    }
-    switchClient(value);
-  };
 
 
   const editingWorkstream = editingWorkstreamId ? workstreams.find(w => w.id === editingWorkstreamId) || null : null;
@@ -496,13 +479,6 @@ export default function Home() {
     }
   };
 
-  const handleLogoClick = () => {
-    setPageMode('table');
-    setCurrentSection('workstreams');
-    _setIsWorkstreamDrawerOpen(false);
-    setSelectedWorkstreamId(null);
-    setCurrentFlowId(null);
-  };
 
   const handleNavigationChange = (section: string) => {
     setCurrentSection(section as PageSection);
@@ -536,10 +512,6 @@ export default function Home() {
     updateKnowledgeBaseAsset(assetId, updates);
   };
 
-  const handleMenuItemClick = (item: string) => {
-    // TODO: Implement modal dialogs for each menu item
-    console.log(`Opening ${item} modal`);
-  };
 
 
 
@@ -596,96 +568,9 @@ export default function Home() {
 
 
   return (
-    <div className="h-full bg-background flex flex-col">
-      {/* Global Header - Never changes */}
-      <header className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/80 flex-shrink-0">
-        <div className="flex h-16 items-center justify-between px-6">
-          {/* Left side - Logo */}
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={handleLogoClick}
-              className="text-xl font-semibold text-foreground hover:text-foreground/80 transition-colors"
-            >
-              Flow Designer
-            </button>
-            {/* Client picker - text-style with small chevron */}
-            <div className="ml-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="flex items-center space-x-1 text-xl font-semibold text-foreground hover:text-foreground/80"
-                    aria-label="Select client"
-                  >
-                    <span>{currentClient || 'Select client'}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 opacity-70">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {availableClients.map((c) => (
-                    <DropdownMenuItem key={c} onClick={() => switchClient(c)}>
-                      {c}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuItem onClick={() => handleClientChange('__add__')}>+ Add client…</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Right side - Storage status + Avatar */}
-          <div className="flex items-center space-x-3">
-            {/* Storage Status Indicator */}
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${
-                workstreamStorageStatus === 'github' ? 'bg-green-500' : 
-                (workstreamsError && workstreamsError.includes('rate limit')) ? 'bg-orange-500' : 'bg-yellow-500'
-              }`} />
-              <span className="text-xs text-muted-foreground">
-                {workstreamStorageStatus === 'github' ? 'GitHub Repo' : 
-                 (workstreamsError && workstreamsError.includes('rate limit')) ? 'Rate Limited' : 'Local Only'}
-              </span>
-            </div>
-            
-            {/* Avatar dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shadow-sm">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuItem onClick={() => handleMenuItemClick('Profile')}>
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMenuItemClick('Billing')}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMenuItemClick('Account')}>
-                <Building2 className="mr-2 h-4 w-4" />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMenuItemClick('Tools')}>
-                <Wrench className="mr-2 h-4 w-4" />
-                Tools
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMenuItemClick('Log out')}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
+    <div className="h-full bg-background flex flex-col overflow-hidden">
       {/* Main Content Area - Swaps between sections and modes */}
-      <main className={`flex-1 transition-opacity duration-300 ${
+      <main className={`flex-1 transition-opacity duration-300 overflow-auto ${
         _isWorkstreamDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
       }`}>
         {/* Rate Limit Warning */}
@@ -761,7 +646,7 @@ export default function Home() {
             <PerformanceCalculator />
           ) : currentSection === 'workstreams' ? (
             // Workstreams Table Mode
-            <div className="p-6 flex-1 overflow-auto">
+            <div className="p-6 flex-1">
             <div className="space-y-6">
               {/* Bulk Action Bar - Only show when workstreams are selected */}
               {selectedWorkstreams.length > 0 && (
@@ -1060,7 +945,7 @@ export default function Home() {
                 onNewFlow={handleNewFlowForSubEntity}
               />
             ) : (
-              <div className="p-6 flex-1 overflow-auto">
+              <div className="p-6 flex-1">
                 <div className="text-center py-8 text-muted-foreground">
                   <h3 className="text-lg font-medium text-gray-900">Workstream not found</h3>
                   <p className="text-sm text-gray-500">Please select a workstream from the main page.</p>
@@ -1075,7 +960,7 @@ export default function Home() {
             )
           ) : (
             // Other sections placeholder
-            <div className="p-6 flex-1 overflow-auto">
+            <div className="p-6 flex-1">
               <div className="text-center py-8 text-muted-foreground">
                 <h3 className="text-lg font-medium text-gray-900">{currentSection.charAt(0).toUpperCase() + currentSection.slice(1).replace('-', ' ')}</h3>
                 <p className="text-sm text-gray-500">This section is coming soon.</p>
