@@ -54,11 +54,15 @@ class StorageService {
 
   // Load all data from GitHub Repository (single source of truth)
   async loadAllData(clientName: string = 'HelloFresh'): Promise<AppData> {
+    console.log(`🚀 loadAllData called for client: ${clientName}`);
+    
     // Check configuration dynamically
     const currentlyConfigured = !!(GITHUB_TOKEN && GITHUB_REPO);
+    console.log(`⚙️ GitHub configured: ${currentlyConfigured}`);
     
     // If configuration is missing, return empty data without error
     if (!currentlyConfigured) {
+      console.log(`❌ GitHub not configured, returning empty data`);
       const emptyData: AppData = {
         contactDrivers: [],
         knowledgeBaseAssets: [],
@@ -69,6 +73,7 @@ class StorageService {
 
     // Return cached data if available
     if (this.cachedData.has(clientName) && !this.isLoading) {
+      console.log(`💾 Using cached data for client: ${clientName}`);
       return this.cachedData.get(clientName)!;
     }
 
@@ -82,17 +87,17 @@ class StorageService {
       
       if (repoData) {
         this.cachedData.set(clientName, repoData);
+        console.log(`✅ Successfully loaded data for client: ${clientName}`, {
+          workstreams: repoData.workstreams.length,
+          contactDrivers: repoData.contactDrivers.length,
+          knowledgeBaseAssets: repoData.knowledgeBaseAssets.length
+        });
         return repoData;
       }
       
-      // If no data in repo, return empty structure
-      const emptyData: AppData = {
-        contactDrivers: [],
-        knowledgeBaseAssets: [],
-        workstreams: []
-      };
-      this.cachedData.set(clientName, emptyData);
-      return emptyData;
+      // If no data in repo, this is an error condition - don't return empty data
+      // because it might get saved back and overwrite existing data
+      throw new Error(`No data found for client: ${clientName}. This might indicate a loading error or missing files.`);
     } catch (error) {
       console.error('Failed to load from GitHub Repository:', error);
       throw error;
@@ -220,13 +225,20 @@ class StorageService {
   async ensureClientFilesExist(clientName: string): Promise<void> {
     // Check if client files exist by trying to load them directly from repo
     try {
-      await this.loadFromRepo(clientName);
-    } catch {
-      // Files don't exist or are corrupted, create initial data
-      console.log(`Creating initial files for client: ${clientName}`);
-      const initialData = this.getInitialDataForClient(clientName);
-      await this.saveToRepo(initialData, clientName);
+      const existingData = await this.loadFromRepo(clientName);
+      // If we successfully loaded data, we're good - don't overwrite
+      if (existingData && (existingData.workstreams.length > 0 || existingData.contactDrivers.length > 0 || existingData.knowledgeBaseAssets.length > 0)) {
+        console.log(`✅ Client files already exist for: ${clientName}`);
+        return;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Error loading client files for ${clientName}:`, error);
     }
+    
+    // Only create initial data if no existing data was found
+    console.log(`📝 Creating initial files for client: ${clientName}`);
+    const initialData = this.getInitialDataForClient(clientName);
+    await this.saveToRepo(initialData, clientName);
   }
 
   private getInitialDataForClient(clientName: string): AppData {
@@ -393,21 +405,27 @@ class StorageService {
 
   private async loadFromRepo(clientName: string): Promise<AppData | null> {
     try {
+      console.log(`🔍 Loading data for client: ${clientName}`);
       const [workstreams, kbAssets, contactDrivers] = await Promise.all([
         this.loadFileFromRepo(`${clientName}/workstreams.json`),
         this.loadFileFromRepo(`${clientName}/kb-assets.json`),
         this.loadFileFromRepo(`${clientName}/contact-drivers.json`)
       ]);
 
+      console.log(`📊 Data loaded for ${clientName}:`, {
+        workstreamsExists: !!workstreams,
+        kbAssetsExists: !!kbAssets,
+        contactDriversExists: !!contactDrivers,
+        workstreamsLength: workstreams ? JSON.parse(workstreams).length : 0
+      });
+
       // Check if any files are missing
       const hasAnyData = workstreams || kbAssets || contactDrivers;
       
       if (!hasAnyData) {
-        // No files exist at all, create initial data
-        console.log(`No files found for client ${clientName}, creating initial data`);
-        const initialData = this.getInitialDataForClient(clientName);
-        await this.saveToRepo(initialData, clientName);
-        return initialData;
+        // No files exist at all
+        console.log(`⚠️ No files found for client ${clientName}`);
+        return null;
       }
 
       const parseJSON = <T>(content: string | null): T[] => {

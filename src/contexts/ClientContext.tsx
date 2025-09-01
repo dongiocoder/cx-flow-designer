@@ -54,10 +54,25 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const switchClient = (clientName: string) => {
+    console.log(`🔄 Switching to client: ${clientName}`);
+    
     // Clear storage cache before switching
     storageService.clearCache();
+    
+    // Clear all localStorage cache that might be client-specific
+    const keysToRemove = Object.keys(localStorage).filter(key => 
+      key.includes('workstream') || key.includes('client') || key.includes('cx-')
+    );
+    keysToRemove.forEach(key => {
+      if (key !== 'cx-selected-client') {
+        localStorage.removeItem(key);
+      }
+    });
+    
     setCurrentClient(clientName);
     localStorage.setItem('cx-selected-client', clientName);
+    
+    console.log(`🔄 Client switched to: ${clientName}, reloading page...`);
     // Force page refresh to reload all data for new client
     window.location.reload();
   };

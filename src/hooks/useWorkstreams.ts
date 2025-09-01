@@ -348,7 +348,8 @@ export function useWorkstreams() {
           });
           setWorkstreams(migratedWorkstreams);
         } else {
-          // If no saved workstreams, just use empty array - don't overwrite existing data
+          // If no saved workstreams, just use empty array but don't trigger saves
+          console.warn('⚠️ No workstreams data loaded - using empty array');
           setWorkstreams([]);
         }
         
@@ -373,11 +374,14 @@ export function useWorkstreams() {
     loadData();
   }, [currentClient]); // Reload when client changes
 
-  // Save workstreams to GitHub Gist whenever they change
+  // Save workstreams to GitHub whenever they change
   useEffect(() => {
-    if (workstreams.length > 0 && !isLoading && !isManualOperation) {
+    // Only save if we have data and we're not in a loading/error state
+    // This prevents accidental overwrites with empty data during initialization
+    if (workstreams.length > 0 && !isLoading && !isManualOperation && !error) {
       const saveData = async () => {
         try {
+          console.log(`💾 Auto-saving ${workstreams.length} workstreams for client: ${currentClient}`);
           await storageService.saveWorkstreams(workstreams, currentClient);
           // Update storage status after successful save
           const status = storageService.getStorageStatus();
@@ -396,8 +400,10 @@ export function useWorkstreams() {
       };
       
       saveData();
+    } else if (workstreams.length === 0 && !isLoading && !isManualOperation) {
+      console.warn('⚠️ Skipping auto-save: workstreams array is empty, preventing potential data loss');
     }
-  }, [workstreams, isLoading, currentClient, isManualOperation]); // Include currentClient and isManualOperation in deps
+  }, [workstreams, isLoading, currentClient, isManualOperation, error]);
 
   const addWorkstream = async (workstreamData: Omit<Workstream, 'id' | 'createdAt' | 'lastModified' | 'flows'>) => {
     // Set manual operation flag to prevent automatic save
