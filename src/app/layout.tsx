@@ -4,6 +4,7 @@ import "./globals.css";
 import { MainNavigation } from "@/components/MainNavigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ClientProvider } from "@/contexts/ClientContext";
+import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,21 +32,23 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <TooltipProvider>
-          <ClientProvider>
-            <div className="flex h-screen overflow-hidden">
-              {/* Left Navigation - Fixed */}
-              <aside className="flex-shrink-0 h-full overflow-hidden">
-                <MainNavigation />
-              </aside>
-              
-              {/* Main Content - Scrollable */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {children}
+        <ConvexClientProvider>
+          <TooltipProvider>
+            <ClientProvider>
+              <div className="flex h-screen overflow-hidden">
+                {/* Left Navigation - Fixed */}
+                <aside className="flex-shrink-0 h-full overflow-hidden">
+                  <MainNavigation />
+                </aside>
+                
+                {/* Main Content - Scrollable */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                  {children}
+                </div>
               </div>
-            </div>
-          </ClientProvider>
-        </TooltipProvider>
+            </ClientProvider>
+          </TooltipProvider>
+        </ConvexClientProvider>
       </body>
     </html>
   );

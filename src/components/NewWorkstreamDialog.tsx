@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Plus, ArrowLeft, Target, ArrowDown, Activity, FileText, ChevronDown, ChevronRight, TrendingUp, BarChart3, DollarSign } from "lucide-react";
-import type { Workstream } from "@/hooks/useWorkstreams";
+import type { Workstream } from "@/hooks/useWorkstreamsConvex";
 
 interface NewWorkstreamDialogProps {
   onCreateWorkstream: (workstreamData: Omit<Workstream, 'id' | 'flows' | 'createdAt' | 'lastModified'>) => void;

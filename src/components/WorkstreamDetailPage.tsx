@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, MoreHorizontal, Edit, Copy, Trash2, BarChart3 } from "lucide-react";
-import { Workstream, ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreams";
+import { Workstream, ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreamsConvex";
 import { SubEntityDialog } from "@/components/SubEntityDialog";
 import { UniversalSubEntityDrawer } from "@/components/UniversalSubEntityDrawer";
 

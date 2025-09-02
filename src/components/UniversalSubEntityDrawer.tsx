@@ -15,7 +15,7 @@ import {
   MessageCircle, 
   MoreHorizontal 
 } from "lucide-react";
-import { ContactDriver, Campaign, Process, FlowEntity, Flow } from "@/hooks/useWorkstreams";
+import { ContactDriver, Campaign, Process, FlowEntity, Flow } from "@/hooks/useWorkstreamsConvex";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 

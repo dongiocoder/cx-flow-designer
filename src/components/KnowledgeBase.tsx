@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Trash2, Copy, Upload } from "lucide-react";
 import { NewKnowledgeBaseAssetDialog } from "@/components/NewKnowledgeBaseAssetDialog";
-import { useKnowledgeBaseAssets, type KnowledgeBaseAsset, KNOWLEDGE_BASE_TYPES } from "@/hooks/useKnowledgeBaseAssets";
+import { useKnowledgeBaseAssets, type KnowledgeBaseAsset, KNOWLEDGE_BASE_TYPES } from "@/hooks/useKnowledgeBaseAssetsConvex";
 
 interface KnowledgeBaseProps {
   onCreateAsset?: (asset: KnowledgeBaseAsset) => void;

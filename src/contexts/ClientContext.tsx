@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { storageService } from '@/lib/storage';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 interface ClientContextType {
   currentClient: string;
@@ -16,48 +17,30 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
 export function ClientProvider({ children }: { children: ReactNode }) {
   const [currentClient, setCurrentClient] = useState<string>('');
-  const [availableClients, setAvailableClients] = useState<string[]>([]);
-  const [isLoadingClients, setIsLoadingClients] = useState(true);
+  
+  // Use Convex to get companies
+  const companies = useQuery(api.companies.getAll);
+  const createCompany = useMutation(api.companies.create);
+  
+  const availableClients = companies?.map(c => c.name) || [];
+  const isLoadingClients = companies === undefined;
 
-  // Load clients and current selection from storage
+  // Load current client from localStorage and set it
   useEffect(() => {
-    const loadClients = async () => {
-      try {
-        setIsLoadingClients(true);
+    if (companies && companies.length > 0) {
+      const savedClient = localStorage.getItem('cx-selected-client');
+      const clientNames = companies.map(c => c.name);
+      const clientToUse = savedClient && clientNames.includes(savedClient) 
+        ? savedClient 
+        : clientNames[0];
         
-        // Load available clients from GitHub
-        const clients = await storageService.loadClients();
-        setAvailableClients(clients);
-        
-        // Load current client from localStorage (UI state)
-        const savedClient = localStorage.getItem('cx-selected-client');
-        const clientToUse = savedClient && clients.includes(savedClient) 
-          ? savedClient 
-          : clients[0] || 'HelloFresh';
-          
-        setCurrentClient(clientToUse);
-        localStorage.setItem('cx-selected-client', clientToUse);
-        
-      } catch (error) {
-        console.error('Failed to load clients:', error);
-        // Fallback to default
-        const defaultClients = ['HelloFresh', 'Warby Parker'];
-        setAvailableClients(defaultClients);
-        setCurrentClient('HelloFresh');
-        localStorage.setItem('cx-selected-client', 'HelloFresh');
-      } finally {
-        setIsLoadingClients(false);
-      }
-    };
-
-    loadClients();
-  }, []);
+      setCurrentClient(clientToUse);
+      localStorage.setItem('cx-selected-client', clientToUse);
+    }
+  }, [companies]);
 
   const switchClient = (clientName: string) => {
     console.log(`🔄 Switching to client: ${clientName}`);
-    
-    // Clear storage cache before switching
-    storageService.clearCache();
     
     // Clear all localStorage cache that might be client-specific
     const keysToRemove = Object.keys(localStorage).filter(key => 
@@ -79,12 +62,12 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
   const createClient = async (clientName: string) => {
     try {
-      // Clear cache before creating new client
-      storageService.clearCache();
-      await storageService.createClient(clientName);
-      // Clear cache again after creation
-      storageService.clearCache();
-      await refreshClients();
+      console.log(`Creating client: ${clientName}`);
+      // Create the company in Convex
+      const slug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      await createCompany({ name: clientName, slug });
+      
+      // Switch to the new client
       switchClient(clientName);
     } catch (error) {
       console.error('Failed to create client:', error);
@@ -93,14 +76,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshClients = async () => {
-    try {
-      // Clear cache to ensure fresh client data
-      storageService.clearCache();
-      const clients = await storageService.loadClients();
-      setAvailableClients(clients);
-    } catch (error) {
-      console.error('Failed to refresh clients:', error);
-    }
+    // No need to refresh - Convex queries are reactive
+    console.log('Refresh clients called (Convex handles this automatically)');
   };
 
   return (

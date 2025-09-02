@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Trash2, Copy, Edit } from "lucide-react";
 
-import { useWorkstreams, type Workstream, type ContactDriver, type Campaign, type Process, type FlowEntity } from "@/hooks/useWorkstreams";
+import { useWorkstreams, type Workstream, type ContactDriver, type Campaign, type Process, type FlowEntity } from "@/hooks/useWorkstreamsConvex";
 import { NewWorkstreamDialog } from "@/components/NewWorkstreamDialog";
 
 import { WorkstreamDetailPage } from "@/components/WorkstreamDetailPage";
@@ -15,7 +15,7 @@ import { KnowledgeBaseEditor } from "@/components/KnowledgeBaseEditor";
 import { Home as Dashboard } from "@/components/Home";
 import { PerformanceCalculator } from "@/components/PerformanceCalculator";
 import { Settings } from "@/components/Settings";
-import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssets";
+import { useKnowledgeBaseAssets, type KnowledgeBaseAsset } from "@/hooks/useKnowledgeBaseAssetsConvex";
 import { useState, useEffect } from "react";
 import type { Node, Edge } from '@xyflow/react';
 import { useClient } from "@/contexts/ClientContext";
@@ -32,7 +32,6 @@ export default function Home() {
     selectedWorkstreams,
     isLoading: workstreamsLoading,
     error: workstreamsError,
-    storageStatus: workstreamStorageStatus,
     addWorkstream,
     updateWorkstream,
     deleteWorkstream,
@@ -69,7 +68,6 @@ export default function Home() {
     updateKnowledgeBaseAsset,
     isLoading: kbLoading,
     error: kbError,
-    storageStatus: kbStorageStatus
   } = useKnowledgeBaseAssets();
 
   const [pageMode, setPageMode] = useState<PageMode>('table');
@@ -574,62 +572,26 @@ export default function Home() {
       <main className={`flex-1 transition-opacity duration-300 overflow-auto ${
         _isWorkstreamDrawerOpen && pageMode === 'table' ? 'opacity-85' : 'opacity-100'
       }`}>
-        {/* Rate Limit Warning */}
-        {((workstreamsError && workstreamsError.includes('rate limit')) || (kbError && kbError.includes('rate limit'))) && (
-          <div className="mx-6 mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-orange-500 rounded-full" />
-              <span className="font-medium text-orange-800">GitHub Rate Limited</span>
-            </div>
-            <p className="text-sm text-orange-700 mt-1">
-              {workstreamsError || kbError}
-            </p>
-            <p className="text-xs text-orange-600 mt-2">
-              Changes are saved locally and will sync automatically when the rate limit resets.
-            </p>
-          </div>
-        )}
-
-        {/* Other GitHub Errors */}
-        {(workstreamsError || kbError) && 
-         workstreamStorageStatus !== 'none' && 
-         !((workstreamsError && workstreamsError.includes('rate limit')) || (kbError && kbError.includes('rate limit'))) && (
+        {/* General Error Display (Convex handles errors automatically, but show if any occur) */}
+        {(workstreamsError || kbError) && (
           <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 bg-red-500 rounded-full" />
-              <span className="font-medium text-red-800">GitHub Sync Error</span>
+              <span className="font-medium text-red-800">Error</span>
             </div>
             <p className="text-sm text-red-700 mt-1">
               {workstreamsError || kbError}
             </p>
-            <p className="text-xs text-red-600 mt-2">
-              Please check your internet connection and GitHub token permissions.
-            </p>
           </div>
         )}
 
-        {/* Configuration Help - Only show when not configured */}
-        {workstreamStorageStatus === 'none' && (
-          <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full" />
-              <span className="font-medium text-blue-800">Local Mode</span>
-            </div>
-            <p className="text-sm text-blue-700 mt-1">
-              Data is saved locally only. Configure GitHub Repository for cloud sync.
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              Set NEXT_PUBLIC_GITHUB_TOKEN and NEXT_PUBLIC_GITHUB_REPO in your .env.local file.
-            </p>
-          </div>
-        )}
 
         {/* Loading State */}
         {(workstreamsLoading || kbLoading) && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading data from GitHub Repository...</p>
+              <p className="text-muted-foreground">Loading data...</p>
             </div>
           </div>
         )}
@@ -982,7 +944,6 @@ export default function Home() {
               updateFlow={handleUpdateSubEntityFlow}
               initialNodes={currentFlow.data?.nodes || []}
               initialEdges={currentFlow.data?.edges || []}
-              storageStatus={workstreamStorageStatus}
             />
           ) : (
             <div className="flex-1 bg-gray-50 flex items-center justify-center">
@@ -1005,7 +966,6 @@ export default function Home() {
               asset={currentAsset}
               onBack={handleKnowledgeBaseEditorBack}
               onSave={handleSaveKnowledgeBaseAsset}
-              storageStatus={kbStorageStatus}
             />
           ) : (
             <div className="flex-1 bg-gray-50 flex items-center justify-center">

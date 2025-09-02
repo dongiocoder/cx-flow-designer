@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
-import { KNOWLEDGE_BASE_TYPES } from "@/hooks/useKnowledgeBaseAssets";
+import { KNOWLEDGE_BASE_TYPES } from "@/hooks/useKnowledgeBaseAssetsConvex";
 
 type KnowledgeBaseType = typeof KNOWLEDGE_BASE_TYPES[number];
 
@@ -22,10 +22,9 @@ interface KnowledgeBaseEditorProps {
   asset: KnowledgeBaseAsset;
   onBack: () => void;
   onSave: (assetId: string, updates: Partial<KnowledgeBaseAsset>) => void;
-  storageStatus?: 'github' | 'localStorage' | 'none';
 }
 
-export function KnowledgeBaseEditor({ asset, onBack, onSave, storageStatus = 'localStorage' }: KnowledgeBaseEditorProps) {
+export function KnowledgeBaseEditor({ asset, onBack, onSave }: KnowledgeBaseEditorProps) {
   const [assetName, setAssetName] = useState(asset.name);
   const [content, setContent] = useState(asset.content || '');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -193,17 +192,6 @@ export function KnowledgeBaseEditor({ asset, onBack, onSave, storageStatus = 'lo
               {isDirty ? 'Unsaved changes' : lastSaved ? `Auto-saved ${formatLastSaved(lastSaved)}` : 'No changes yet'}
             </div>
             
-            {/* Storage status indicator */}
-            <div className="text-xs text-muted-foreground flex items-center space-x-1">
-              <div className={`w-2 h-2 rounded-full ${
-                storageStatus === 'github' ? 'bg-green-500' : 
-                storageStatus === 'localStorage' ? 'bg-yellow-500' : 'bg-red-500'
-              }`}></div>
-              <span>
-                {storageStatus === 'github' ? 'GitHub' : 
-                 storageStatus === 'localStorage' ? 'Local' : 'Offline'}
-              </span>
-            </div>
           </div>
         </div>
       </div>

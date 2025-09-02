@@ -24,7 +24,7 @@ import {
   Wrench
 } from "lucide-react";
 import { useClient } from "@/contexts/ClientContext";
-import { useWorkstreams } from "@/hooks/useWorkstreams";
+import { useWorkstreams } from "@/hooks/useWorkstreamsConvex";
 import { Logo } from "./Logo";
 
 interface NavigationItem {
@@ -41,7 +41,7 @@ interface MainNavigationProps {
 export function MainNavigation({ onNavigate }: MainNavigationProps) {
   const [activeItem, setActiveItem] = useState<string>("dashboard");
   const { currentClient, availableClients, switchClient, createClient } = useClient();
-  const { storageStatus, error: workstreamsError } = useWorkstreams();
+  const { } = useWorkstreams(); // Keep hook for any future needs
 
   // Updated navigation items with reduced set
   const navigationItems: NavigationItem[] = [
@@ -187,25 +187,6 @@ export function MainNavigation({ onNavigate }: MainNavigationProps) {
           </TooltipContent>
         </Tooltip>
 
-        {/* Service Status Indicator */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-12 h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 relative"
-            >
-              <div className={`w-3 h-3 rounded-full ${
-                storageStatus === 'github' ? 'bg-green-500' : 
-                (workstreamsError && workstreamsError.includes('rate limit')) ? 'bg-orange-500' : 'bg-yellow-500'
-              }`} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>{storageStatus === 'github' ? 'GitHub Connected' : 
-               (workstreamsError && workstreamsError.includes('rate limit')) ? 'Rate Limited' : 'Local Only'}</p>
-          </TooltipContent>
-        </Tooltip>
 
 
         {/* User Profile */}

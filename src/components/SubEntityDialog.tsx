@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreams";
+import { ContactDriver, Campaign, Process, FlowEntity } from "@/hooks/useWorkstreamsConvex";
 
 interface SubEntityDialogProps {
   subEntityType: 'contact-drivers' | 'campaigns' | 'processes' | 'flows';
